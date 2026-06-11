@@ -1,0 +1,5 @@
+Below are top Reddit posts for the niche provided. Keep only posts that could seed a video topic in this niche: a concrete story, fact, person, event, or phenomenon with broad appeal. Drop memes, meta posts, image-only posts, and personal anecdotes with no general hook. For each kept post return: seed_text (the topic distilled to one line), why_compelling (one line explaining why this would make a great video).
+
+Respond with valid JSON only. No markdown fences, no preamble.
+
+JSON: {"seeds": [{"seed_text": "", "why_compelling": ""}]}

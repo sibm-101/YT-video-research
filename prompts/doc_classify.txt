@@ -1,0 +1,5 @@
+Classify this document's content as VIDEO_DATA (lists of real videos with titles/views), KNOWLEDGE (title frameworks, formulas, swipe files, strategy writing), or BOTH. If KNOWLEDGE or BOTH, extract every distinct framework as {name, pattern (with placeholders like (Entity) or [Topic]), mechanics (why it works, comma-separated emotional drivers), example (a real or illustrative title using the pattern)}.
+
+Respond with valid JSON only. No markdown fences, no preamble.
+
+JSON: {"classification": "VIDEO_DATA|KNOWLEDGE|BOTH", "frameworks": [{"name": "", "pattern": "", "mechanics": "", "example": ""}]}

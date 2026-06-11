@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+{% block title %}Settings — Viral Idea Engine{% endblock %}
+{% block content %}
+
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-[#e2e2f0]">Settings</h1>
+  <p class="text-[#8888aa] text-sm mt-1">Configure the engine's behavior</p>
+</div>
+
+<div class="space-y-5" id="settings-form">
+
+  <!-- API Keys -->
+  <div class="card p-6">
+    <div class="font-semibold text-[#e2e2f0] mb-4">API Keys</div>
+    <div class="space-y-4">
+      <div>
+        <label class="label">Anthropic API Key</label>
+        <div class="flex gap-2">
+          <input id="anthropic-key" type="password" class="input flex-1"
+                 placeholder="{% if anthropic_key_set %}Key is set — enter new key to replace{% else %}sk-ant-...{% endif %}"/>
+          <button onclick="testAnthropic()" class="btn-secondary text-sm">Test</button>
+        </div>
+        <div id="anthropic-status" class="hidden text-xs mt-1"></div>
+      </div>
+      <div>
+        <label class="label">YouTube Data API v3 Key</label>
+        <div class="flex gap-2">
+          <input id="youtube-key" type="password" class="input flex-1"
+                 placeholder="{% if youtube_key_set %}Key is set — enter new key to replace{% else %}AIza...{% endif %}"/>
+          <button onclick="testYouTube()" class="btn-secondary text-sm">Test</button>
+        </div>
+        <div id="youtube-status" class="hidden text-xs mt-1"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Models -->
+  <div class="card p-6">
+    <div class="font-semibold text-[#e2e2f0] mb-4">AI Models</div>
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="label">Parse / Classify model</label>
+        <input id="parse_classify" class="input" value="{{ cfg.models.parse_classify }}"/>
+        <div class="text-xs text-[#5a5a72] mt-1">Used for screenshot extraction, structural scoring. Faster and cheaper.</div>
+      </div>
+      <div>
+        <label class="label">Generate / Reason model</label>
+        <input id="generate_reason" class="input" value="{{ cfg.models.generate_reason }}"/>
+        <div class="text-xs text-[#5a5a72] mt-1">Used for idea generation, rubric derivation, verdicts.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Outlier thresholds -->
+  <div class="card p-6">
+    <div class="font-semibold text-[#e2e2f0] mb-4">Outlier & Scoring</div>
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="label">Outlier threshold</label>
+        <input id="outlier_threshold" type="number" step="0.5" class="input" value="{{ cfg.outlier_threshold }}"/>
+        <div class="text-xs text-[#5a5a72] mt-1">How many times above a channel's normal views a video must be to count as a winner. Default: 3.0</div>
+      </div>
+      <div>
+        <label class="label">Minimum long-form duration (seconds)</label>
+        <input id="longform_min_seconds" type="number" class="input" value="{{ cfg.longform_min_seconds }}"/>
+        <div class="text-xs text-[#5a5a72] mt-1">Videos shorter than this are treated as Shorts and excluded from median math. Default: 180</div>
+      </div>
+      <div>
+        <label class="label">Median window (recent videos)</label>
+        <input id="median_window_videos" type="number" class="input" value="{{ cfg.median_window_videos }}"/>
+        <div class="text-xs text-[#5a5a72] mt-1">How many of a channel's most recent uploads to use when computing its median views. Default: 30</div>
+      </div>
+      <div>
+        <label class="label">Structural score minimum</label>
+        <input id="structural_min" type="number" class="input" value="{{ cfg.structural_min }}"/>
+        <div class="text-xs text-[#5a5a72] mt-1">Ideas scoring below this on the niche rubric (0–10) are killed before live validation. Default: 6</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Run settings -->
+  <div class="card p-6">
+    <div class="font-semibold text-[#e2e2f0] mb-4">Run Defaults</div>
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="label">Ideas per run</label>
+        <input id="ideas_per_run" type="number" class="input" value="{{ cfg.ideas_per_run }}"/>
+        <div class="text-xs text-[#5a5a72] mt-1">How many ideas Claude generates per run (before dedup and killing). Default: 30</div>
+      </div>
+      <div>
+        <label class="label">Validate top N ideas</label>
+        <input id="validate_top" type="number" class="input" value="{{ cfg.validate_top }}"/>
+        <div class="text-xs text-[#5a5a72] mt-1">Only the top N ideas by structural score get live YouTube validation. Default: 25</div>
+      </div>
+      <div>
+        <label class="label">Max YouTube searches per run</label>
+        <input id="max_searches_per_run" type="number" class="input" value="{{ cfg.max_searches_per_run }}"/>
+        <div class="text-xs text-[#5a5a72] mt-1">Hard cap on search.list calls (100 quota units each). Prevents daily quota exhaustion. Default: 60</div>
+      </div>
+      <div>
+        <label class="label">Cache duration (days)</label>
+        <input id="cache_days" type="number" class="input" value="{{ cfg.cache_days }}"/>
+        <div class="text-xs text-[#5a5a72] mt-1">How long YouTube API responses are cached before re-fetching. Default: 7</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Staleness & burn -->
+  <div class="card p-6">
+    <div class="font-semibold text-[#e2e2f0] mb-4">Staleness & Frame Burn</div>
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="label">Staleness threshold (months)</label>
+        <input id="staleness_months" type="number" class="input" value="{{ cfg.staleness_months }}"/>
+        <div class="text-xs text-[#5a5a72] mt-1">Winners older than this with no recent breakout get a 1.5× staleness bonus. Default: 18</div>
+      </div>
+      <div>
+        <label class="label">Frame burn minimum subs</label>
+        <input id="burn_min_subs" type="number" class="input" value="{{ cfg.burn_min_subs }}"/>
+        <div class="text-xs text-[#5a5a72] mt-1">A channel must have at least this many subs for its underperformance to count as a burn. Default: 20,000</div>
+      </div>
+      <div>
+        <label class="label">Frame burn fuzzy threshold (0–1)</label>
+        <input id="burn_fuzzy_threshold" type="number" step="0.05" class="input" value="{{ cfg.burn_fuzzy_threshold }}"/>
+        <div class="text-xs text-[#5a5a72] mt-1">Title similarity required to trigger a frame burn kill. Default: 0.8</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Wikipedia demand -->
+  <div class="card p-6">
+    <div class="font-semibold text-[#e2e2f0] mb-4">External Demand (Wikipedia)</div>
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="label">Minimum monthly Wikipedia views for "Virgin Gold"</label>
+        <input id="wiki_min_monthly_views" type="number" class="input" value="{{ cfg.wiki_min_monthly_views }}"/>
+        <div class="text-xs text-[#5a5a72] mt-1">Average monthly pageviews on Wikipedia needed to flag an untapped topic as Virgin Gold. Default: 50,000</div>
+      </div>
+      <div>
+        <label class="label">Wikipedia views below which demand is dead</label>
+        <input id="wiki_dead_monthly_views" type="number" class="input" value="{{ cfg.wiki_dead_monthly_views }}"/>
+        <div class="text-xs text-[#5a5a72] mt-1">Below this average, the topic is capped at a demand score of 2. Default: 3,000</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reddit -->
+  <div class="card p-6">
+    <div class="font-semibold text-[#e2e2f0] mb-3">Reddit Seeds (Optional)</div>
+    <label class="flex items-center gap-3 cursor-pointer mb-4">
+      <input type="checkbox" id="reddit_enabled" class="w-4 h-4 accent-indigo-500"
+             {% if cfg.reddit.enabled %}checked{% endif %}/>
+      <span class="text-sm text-[#c0c0d8]">Enable Reddit seed harvesting</span>
+    </label>
+    <div class="text-xs text-[#5a5a72]">When enabled, the engine fetches top Reddit posts from each niche's configured subreddits and uses them as topic seeds for idea generation. Configure subreddits per niche in the niche settings (coming soon).</div>
+  </div>
+
+  <!-- Actions -->
+  <div class="flex gap-3">
+    <button onclick="saveSettings()" class="btn-primary">Save Settings</button>
+    <button onclick="resetSettings()" class="btn-secondary text-sm">Reset to Defaults</button>
+  </div>
+
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+async function testAnthropic() {
+  const key = document.getElementById('anthropic-key').value.trim();
+  if (!key) return showStatus('anthropic', 'Enter a key first.', false);
+  showStatus('anthropic', 'Testing...', null);
+  const fd = new FormData(); fd.append('key', key);
+  const d = await apiPost('/api/settings/test-anthropic', fd);
+  showStatus('anthropic', d.message, d.ok);
+}
+
+async function testYouTube() {
+  const key = document.getElementById('youtube-key').value.trim();
+  if (!key) return showStatus('youtube', 'Enter a key first.', false);
+  showStatus('youtube', 'Testing...', null);
+  const fd = new FormData(); fd.append('key', key);
+  const d = await apiPost('/api/settings/test-youtube', fd);
+  showStatus('youtube', d.message, d.ok);
+}
+
+function showStatus(field, msg, ok) {
+  const el = document.getElementById(`${field}-status`);
+  el.className = `text-xs mt-1 ${ok === null ? 'text-yellow-400' : ok ? 'text-green-400' : 'text-red-400'}`;
+  el.textContent = ok === null ? '⏳ ' + msg : ok ? '✓ ' + msg : '✗ ' + msg;
+  el.classList.remove('hidden');
+}
+
+async function saveSettings() {
+  const data = {
+    outlier_threshold: document.getElementById('outlier_threshold').value,
+    longform_min_seconds: document.getElementById('longform_min_seconds').value,
+    median_window_videos: document.getElementById('median_window_videos').value,
+    ideas_per_run: document.getElementById('ideas_per_run').value,
+    validate_top: document.getElementById('validate_top').value,
+    structural_min: document.getElementById('structural_min').value,
+    staleness_months: document.getElementById('staleness_months').value,
+    burn_min_subs: document.getElementById('burn_min_subs').value,
+    burn_fuzzy_threshold: document.getElementById('burn_fuzzy_threshold').value,
+    max_searches_per_run: document.getElementById('max_searches_per_run').value,
+    cache_days: document.getElementById('cache_days').value,
+    wiki_min_monthly_views: document.getElementById('wiki_min_monthly_views').value,
+    wiki_dead_monthly_views: document.getElementById('wiki_dead_monthly_views').value,
+    parse_classify: document.getElementById('parse_classify').value,
+    generate_reason: document.getElementById('generate_reason').value,
+    reddit_enabled: document.getElementById('reddit_enabled').checked,
+  };
+  const r = await fetch('/api/settings/save', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(data),
+  });
+  const d = await r.json();
+  showToast(d.message || 'Saved.', d.ok ? 'success' : 'error');
+}
+
+async function resetSettings() {
+  if (!confirm('Reset all settings to their defaults?')) return;
+  const d = await apiPost('/api/settings/reset', new FormData());
+  if (d.ok) { showToast('Settings reset.', 'success'); setTimeout(() => location.reload(), 800); }
+}
+</script>
+{% endblock %}

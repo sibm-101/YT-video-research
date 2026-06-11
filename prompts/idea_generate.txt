@@ -1,0 +1,16 @@
+You generate new YouTube video ideas for the niche described below. Use the rubric, proven patterns, frameworks library, and any external seeds provided. The EXISTING TITLES list must not be duplicated or closely matched.
+
+Generate {n} candidates using these three methods (mix them):
+(a) Adjacent laddering: take a proven topic, step one degree away in stakes, specificity, or time period
+(b) Frame transfer: apply a framework from the library to a proven topic in this niche
+(c) Virgin crossing: combine a proven frame with a topic that has external demand (Reddit/Wikipedia signal) but zero or thin supply in this niche's format
+
+Rules:
+- Every title must match the niche's native caps/style conventions exactly
+- Every idea must plausibly score high on all rubric drivers
+- No title may fuzzy-match any existing title at 85% or above
+- Include core_entity: the best Wikipedia article title for the idea's main subject (for demand checking)
+
+Respond with valid JSON only. No markdown fences, no preamble.
+
+JSON: [{"title": "", "one_line": "", "frame_used": "", "angle_note": "", "core_entity": ""}]

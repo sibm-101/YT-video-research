@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Reports — Viral Idea Engine{% endblock %}
+{% block content %}
+
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-[#e2e2f0]">Reports</h1>
+  <p class="text-[#8888aa] text-sm mt-1">Past idea generation runs and their results</p>
+</div>
+
+{% if not runs %}
+<div class="card p-12 text-center">
+  <div class="text-5xl mb-4">📋</div>
+  <div class="text-lg font-semibold text-[#e2e2f0] mb-2">No reports yet</div>
+  <p class="text-[#8888aa] text-sm mb-6">Reports are generated automatically after each "Find New Ideas" run.</p>
+  <a href="/ideas/run" class="btn-primary">Find New Ideas →</a>
+</div>
+{% else %}
+<div class="space-y-2">
+  {% for run in runs %}
+  <div class="card p-5 flex items-center justify-between">
+    <div class="flex items-start gap-4">
+      <div class="w-10 h-10 rounded-xl bg-[#1e1e38] flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-[#818cf8]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      </div>
+      <div>
+        <div class="font-medium text-[#e2e2f0]">{{ run.niche_name or 'Unknown Niche' }}</div>
+        <div class="flex items-center gap-3 mt-0.5 text-xs text-[#8888aa]">
+          <span>{{ run.started_at[:16].replace('T',' ') if run.started_at else '—' }} UTC</span>
+          {% if run.ideas_survived is not none %}
+          <span>{{ run.ideas_survived }} ideas survived</span>
+          {% endif %}
+          {% if run.quota_used %}
+          <span>{{ run.quota_used }} quota used</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="flex gap-2">
+      <a href="/reports/{{ run.id }}" class="btn-secondary text-xs py-1.5 px-3">View</a>
+      <a href="/reports/{{ run.id }}/download" class="btn-secondary text-xs py-1.5 px-3">⬇ .md</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}

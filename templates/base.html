@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}Viral Idea Engine{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { DEFAULT: '#6366f1', dark: '#4f46e5', light: '#818cf8' },
+            surface: { DEFAULT: '#1e1e2e', card: '#2a2a3e', border: '#3a3a4e', input: '#252535' },
+          },
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+        }
+      }
+    }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    body { background-color: #13131f; color: #e2e2f0; font-family: 'Inter', system-ui, sans-serif; }
+    .card { background: #1e1e2e; border: 1px solid #2e2e42; border-radius: 12px; }
+    .card-inner { background: #252535; border: 1px solid #32324a; border-radius: 8px; }
+    .btn-primary { background: #6366f1; color: white; padding: 8px 18px; border-radius: 8px; font-weight: 500; transition: background 0.15s; cursor: pointer; border: none; }
+    .btn-primary:hover { background: #4f46e5; }
+    .btn-secondary { background: #252535; color: #a0a0c0; padding: 8px 18px; border-radius: 8px; font-weight: 500; transition: all 0.15s; cursor: pointer; border: 1px solid #3a3a52; }
+    .btn-secondary:hover { background: #2e2e42; color: #e2e2f0; }
+    .btn-danger { background: #ef4444; color: white; padding: 6px 14px; border-radius: 6px; font-weight: 500; cursor: pointer; border: none; transition: background 0.15s; }
+    .btn-danger:hover { background: #dc2626; }
+    .input { background: #252535; border: 1px solid #3a3a52; border-radius: 8px; padding: 9px 13px; color: #e2e2f0; width: 100%; outline: none; transition: border-color 0.15s; }
+    .input:focus { border-color: #6366f1; }
+    .textarea { background: #252535; border: 1px solid #3a3a52; border-radius: 8px; padding: 10px 13px; color: #e2e2f0; width: 100%; outline: none; transition: border-color 0.15s; resize: vertical; }
+    .textarea:focus { border-color: #6366f1; }
+    .label { font-size: 13px; color: #8888aa; margin-bottom: 4px; display: block; font-weight: 500; }
+    .nav-link { color: #8888aa; padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500; transition: all 0.15s; display: flex; align-items: center; gap: 8px; }
+    .nav-link:hover { color: #e2e2f0; background: #252535; }
+    .nav-link.active { color: #818cf8; background: #1e1e32; }
+    .verdict-MAKE { background: #14532d; color: #86efac; border: 1px solid #166534; }
+    .verdict-MAKE_WITH_REFRAME { background: #134e4a; color: #5eead4; border: 1px solid #0f766e; }
+    .verdict-PARK { background: #431407; color: #fdba74; border: 1px solid #9a3412; }
+    .verdict-KILL { background: #1f1212; color: #f87171; border: 1px solid #7f1d1d; }
+    .verdict-VIRGIN_GOLD { background: #2d1b00; color: #fde68a; border: 1px solid #92400e; }
+    .chip { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; }
+    .progress-bar { height: 6px; background: #252535; border-radius: 3px; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, #6366f1, #818cf8); transition: width 0.4s ease; border-radius: 3px; }
+    .stage-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-size: 14px; color: #8888aa; }
+    .stage-item.done { color: #86efac; }
+    .stage-item.active { color: #818cf8; }
+    .stage-dot { width: 8px; height: 8px; border-radius: 50%; background: #3a3a52; flex-shrink: 0; }
+    .stage-item.done .stage-dot { background: #22c55e; }
+    .stage-item.active .stage-dot { background: #6366f1; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+    .drop-zone { border: 2px dashed #3a3a52; border-radius: 12px; padding: 32px; text-align: center; transition: all 0.2s; cursor: pointer; }
+    .drop-zone:hover, .drop-zone.drag-over { border-color: #6366f1; background: #1a1a2e; }
+    .quota-bar { height: 8px; background: #252535; border-radius: 4px; overflow: hidden; }
+    .quota-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+    select.input { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238888aa' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 50; display: flex; align-items: center; justify-content: center; }
+    .modal { background: #1e1e2e; border: 1px solid #3a3a52; border-radius: 16px; padding: 28px; max-width: 480px; width: 90%; }
+    .toast { position: fixed; bottom: 24px; right: 24px; background: #252535; border: 1px solid #3a3a52; border-radius: 10px; padding: 12px 18px; font-size: 14px; z-index: 100; box-shadow: 0 8px 24px rgba(0,0,0,0.4); animation: slideUp 0.3s ease; }
+    .toast.success { border-color: #22c55e; color: #86efac; }
+    .toast.error { border-color: #ef4444; color: #f87171; }
+    @keyframes slideUp { from { transform: translateY(16px); opacity:0; } to { transform: translateY(0); opacity:1; } }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #3a3a52; border-radius: 3px; }
+    .detail-panel { display: none; }
+    .detail-panel.open { display: block; }
+    table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    table.data-table th { color: #8888aa; font-weight: 500; padding: 8px 10px; border-bottom: 1px solid #2e2e42; text-align: left; }
+    table.data-table td { padding: 8px 10px; border-bottom: 1px solid #252535; color: #c0c0d8; }
+    table.data-table tr:last-child td { border-bottom: none; }
+    table.data-table tr:hover td { background: #252535; }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body class="min-h-screen">
+
+<!-- Sidebar nav -->
+<div class="flex min-h-screen">
+  <nav class="w-56 flex-shrink-0 border-r border-[#2e2e42] p-4 flex flex-col gap-1 fixed h-full overflow-y-auto" style="background:#16162a;">
+    <div class="mb-6 px-2">
+      <div class="text-base font-semibold text-[#e2e2f0]">Viral Idea Engine</div>
+      <div class="text-xs text-[#8888aa] mt-0.5">YouTube Research</div>
+    </div>
+    {% set path = request.url.path %}
+    <a href="/" class="nav-link {% if path == '/' %}active{% endif %}">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      Dashboard
+    </a>
+    <a href="/research" class="nav-link {% if path == '/research' %}active{% endif %}">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+      Add Research
+    </a>
+    <a href="/ideas/run" class="nav-link {% if path == '/ideas/run' %}active{% endif %}">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+      Find New Ideas
+    </a>
+    <a href="/ideas" class="nav-link {% if path == '/ideas' %}active{% endif %}">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+      Ideas
+    </a>
+    <a href="/library" class="nav-link {% if path == '/library' %}active{% endif %}">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+      Library
+    </a>
+    <a href="/reports" class="nav-link {% if path.startswith('/reports') %}active{% endif %}">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      Reports
+    </a>
+    <div class="flex-1"></div>
+    <a href="/settings" class="nav-link {% if path == '/settings' %}active{% endif %}">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+      Settings
+    </a>
+  </nav>
+
+  <!-- Main content -->
+  <main class="ml-56 flex-1 min-h-screen">
+    <div class="max-w-5xl mx-auto p-8">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+function showToast(msg, type='success', duration=3500) {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), duration);
+}
+
+async function apiPost(url, formData) {
+  const r = await fetch(url, { method: 'POST', body: formData });
+  return r.json();
+}
+
+async function apiDelete(url) {
+  const r = await fetch(url, { method: 'DELETE' });
+  return r.json();
+}
+
+function confirmAction(msg, onConfirm) {
+  if (confirm(msg)) onConfirm();
+}
+
+// Poll job status
+function pollJob(jobId, onProgress, onDone, onFail) {
+  const timer = setInterval(async () => {
+    const r = await fetch(`/api/jobs/${jobId}`);
+    const data = await r.json();
+    onProgress(data);
+    if (data.status === 'done') { clearInterval(timer); onDone(data); }
+    if (data.status === 'failed') { clearInterval(timer); onFail(data); }
+    if (data.status === 'cancelled') { clearInterval(timer); onFail(data); }
+  }, 2000);
+  return timer;
+}
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

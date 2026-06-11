@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% block title %}Add Research — Viral Idea Engine{% endblock %}
+{% block content %}
+
+<div class="mb-8">
+  <h1 class="text-2xl font-bold text-[#e2e2f0]">Add Research</h1>
+  <p class="text-[#8888aa] text-sm mt-1">Feed the engine with channel URLs, screenshots, PDFs, or pasted text</p>
+</div>
+
+<!-- Niche selector -->
+<div class="card p-5 mb-5">
+  <label class="label">Niche</label>
+  <select id="niche-select" class="input" style="max-width:280px">
+    {% for n in niches %}
+    <option value="{{ n.id }}" {% if n.id == active_niche_id %}selected{% endif %}>{{ n.name }}</option>
+    {% endfor %}
+  </select>
+  {% if not niches %}
+  <p class="text-yellow-400 text-sm mt-2">No niches yet. <a href="/" class="underline">Create one on the Dashboard</a> first.</p>
+  {% endif %}
+</div>
+
+{% if niches %}
+<!-- Input area -->
+<div class="card p-6 mb-5">
+  <div class="grid grid-cols-1 gap-6">
+
+    <!-- URL input -->
+    <div>
+      <label class="label">YouTube Channel or Video URLs</label>
+      <textarea id="urls-input" class="textarea" rows="4"
+                placeholder="Paste one URL per line:&#10;https://youtube.com/@veritasium&#10;https://youtube.com/@kurzgesagt&#10;https://youtube.com/watch?v=dQw4w9WgXcQ"></textarea>
+      <div class="text-xs text-[#5a5a72] mt-1.5">
+        Channel URLs pull the full video catalog. Video URLs import the single video and its channel.
+      </div>
+    </div>
+
+    <!-- File upload -->
+    <div>
+      <label class="label">Upload Files</label>
+      <div id="drop-zone" class="drop-zone" onclick="document.getElementById('file-input').click()">
+        <input id="file-input" type="file" class="hidden" multiple accept=".png,.jpg,.jpeg,.webp,.pdf,.txt,.md" onchange="handleFiles(this.files)"/>
+        <div class="text-[#5a5a72] mb-2">
+          <svg class="w-8 h-8 mx-auto mb-2 text-[#5a5a72]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+        </div>
+        <div class="text-sm text-[#8888aa] font-medium">Drop files here or click to browse</div>
+        <div class="text-xs text-[#5a5a72] mt-1">PNG, JPG, WEBP (screenshots) · PDF · TXT, MD</div>
+      </div>
+      <div id="file-list" class="space-y-1 mt-3"></div>
+    </div>
+
+    <!-- Paste text -->
+    <div>
+      <label class="label">Paste Raw Text</label>
+      <textarea id="paste-input" class="textarea" rows="4"
+                placeholder="Paste any raw text containing video titles, view counts, channel names..."></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- Analyze button -->
+<div class="flex gap-3 mb-6">
+  <button id="analyze-btn" onclick="startAnalysis()" class="btn-primary px-8">
+    Analyze
+  </button>
+</div>
+
+<!-- Progress panel (hidden until job starts) -->
+<div id="progress-panel" class="card p-6 hidden">
+  <div class="flex items-center justify-between mb-4">
+    <div class="font-medium text-[#e2e2f0]">Analyzing Research</div>
+    <button onclick="cancelJob()" class="text-xs text-[#8888aa] hover:text-red-400 transition-colors">Cancel</button>
+  </div>
+  <div class="progress-bar mb-3">
+    <div id="progress-fill" class="progress-fill" style="width:0%"></div>
+  </div>
+  <div id="progress-msg" class="text-sm text-[#8888aa]">Starting...</div>
+</div>
+
+<!-- Results panel -->
+<div id="results-panel" class="hidden"></div>
+{% endif %}
+
+{% endblock %}
+{% block scripts %}
+<script>
+let uploadedFiles = [];
+let currentJobId = null;
+
+// Drag and drop
+const dz = document.getElementById('drop-zone');
+if (dz) {
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); handleFiles(e.dataTransfer.files); });
+}
+
+function handleFiles(fileList) {
+  for (const f of fileList) {
+    if (!uploadedFiles.find(u => u.name === f.name)) {
+      uploadedFiles.push(f);
+    }
+  }
+  renderFileList();
+}
+
+function renderFileList() {
+  const el = document.getElementById('file-list');
+  if (!el) return;
+  el.innerHTML = uploadedFiles.map((f, i) => `
+    <div class="flex items-center justify-between py-1.5 px-3 rounded bg-[#252535] text-sm">
+      <span class="text-[#c0c0d8]">${f.name}</span>
+      <div class="flex items-center gap-3">
+        <span class="text-xs text-[#5a5a72]">${(f.size/1024).toFixed(0)} KB</span>
+        <button onclick="removeFile(${i})" class="text-[#8888aa] hover:text-red-400 transition-colors text-xs">✕</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function removeFile(idx) {
+  uploadedFiles.splice(idx, 1);
+  renderFileList();
+}
+
+async function startAnalysis() {
+  const nicheId = document.getElementById('niche-select').value;
+  if (!nicheId) return showToast('Please select a niche first.', 'error');
+
+  const urls = document.getElementById('urls-input').value.trim();
+  const pasted = document.getElementById('paste-input').value.trim();
+
+  if (!urls && uploadedFiles.length === 0 && !pasted) {
+    return showToast('Please add at least one URL, file, or paste some text.', 'error');
+  }
+
+  const fd = new FormData();
+  fd.append('niche_id', nicheId);
+  fd.append('urls', urls);
+  fd.append('pasted_text', pasted);
+  for (const f of uploadedFiles) fd.append('files', f);
+
+  document.getElementById('analyze-btn').disabled = true;
+  document.getElementById('progress-panel').classList.remove('hidden');
+  document.getElementById('results-panel').classList.add('hidden');
+
+  const d = await apiPost('/api/research/analyze', fd);
+  if (!d.ok) {
+    showToast(d.message || 'Failed to start analysis.', 'error');
+    document.getElementById('analyze-btn').disabled = false;
+    return;
+  }
+
+  currentJobId = d.job_id;
+  pollJob(currentJobId,
+    data => {
+      document.getElementById('progress-fill').style.width = (data.progress_pct || 0) + '%';
+      document.getElementById('progress-msg').textContent = data.message || 'Working...';
+    },
+    data => {
+      document.getElementById('analyze-btn').disabled = false;
+      document.getElementById('progress-msg').textContent = data.message || 'Done!';
+      document.getElementById('progress-fill').style.width = '100%';
+      showResults(data.result_json);
+    },
+    data => {
+      document.getElementById('analyze-btn').disabled = false;
+      showToast(data.error || data.message || 'Analysis failed.', 'error');
+    }
+  );
+}
+
+function showResults(resultJson) {
+  const panel = document.getElementById('results-panel');
+  panel.classList.remove('hidden');
+  let results = [];
+  try { results = JSON.parse(resultJson || '[]'); } catch(e) {}
+
+  if (!results.length) {
+    panel.innerHTML = `<div class="card p-6 text-center text-[#8888aa]">Analysis complete but no data was extracted. Try adding more specific URLs or content.</div>`;
+    return;
+  }
+
+  let html = `<div class="card p-6"><div class="font-medium text-[#e2e2f0] mb-4">Extraction Results</div><div class="space-y-3">`;
+  for (const r of results) {
+    const icon = r.type === 'channel' ? '📺' : r.type === 'screenshot' ? '🖼️' : r.type === 'pdf' ? '📄' : '📝';
+    const name = r.type === 'channel' ? (r.channel?.name || r.url) : r.file || r.type;
+    const detail = r.type === 'channel'
+      ? `${r.videos_inserted || 0} videos imported, ${(r.channel?.subs||0).toLocaleString()} subs`
+      : r.type === 'screenshot'
+      ? `${r.inserted || 0} videos extracted`
+      : r.type === 'pdf'
+      ? `${r.frameworks_extracted || 0} frameworks, ${r.inserted || 0} videos`
+      : `${r.inserted || 0} videos extracted`;
+    const errMsg = r.error ? `<div class="text-xs text-red-400 mt-0.5">${r.error}</div>` : '';
+
+    html += `
+      <div class="card-inner p-3 flex items-start gap-3">
+        <div class="text-lg">${icon}</div>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-medium text-[#e2e2f0] truncate">${name}</div>
+          <div class="text-xs text-[#8888aa] mt-0.5">${detail}</div>
+          ${errMsg}
+        </div>
+      </div>`;
+  }
+  html += `</div><div class="mt-5 flex gap-3">
+    <a href="/library?niche_id=${document.getElementById('niche-select').value}&tab=channels" class="btn-primary text-sm">View in Library →</a>
+  </div></div>`;
+  panel.innerHTML = html;
+}
+
+async function cancelJob() {
+  if (!currentJobId) return;
+  await apiPost(`/api/jobs/${currentJobId}/cancel`, new FormData());
+  showToast('Cancellation requested.', 'success');
+}
+</script>
+{% endblock %}

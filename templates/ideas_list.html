@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+{% block title %}Ideas — Viral Idea Engine{% endblock %}
+{% block content %}
+
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-bold text-[#e2e2f0]">Ideas</h1>
+    <div class="text-[#8888aa] text-sm mt-1">{{ ideas|length }} idea{{ 's' if ideas|length != 1 else '' }} found</div>
+  </div>
+  <a href="/ideas/run" class="btn-primary text-sm">+ New Run</a>
+</div>
+
+<!-- Filters -->
+<div class="card p-4 mb-5 flex flex-wrap gap-3 items-end">
+  <div>
+    <label class="label">Niche</label>
+    <select id="f-niche" class="input text-sm" style="min-width:140px" onchange="applyFilters()">
+      <option value="">All niches</option>
+      {% for n in niches %}
+      <option value="{{ n.id }}" {% if n.id == active_niche_id %}selected{% endif %}>{{ n.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="label">Verdict</label>
+    <select id="f-verdict" class="input text-sm" style="min-width:160px" onchange="applyFilters()">
+      <option value="" {% if not filter_verdict %}selected{% endif %}>All verdicts</option>
+      <option value="MAKE" {% if filter_verdict=='MAKE' %}selected{% endif %}>✅ MAKE</option>
+      <option value="MAKE_WITH_REFRAME" {% if filter_verdict=='MAKE_WITH_REFRAME' %}selected{% endif %}>🔄 MAKE WITH REFRAME</option>
+      <option value="VIRGIN_GOLD" {% if filter_verdict=='VIRGIN_GOLD' %}selected{% endif %}>🥇 VIRGIN GOLD</option>
+      <option value="PARK" {% if filter_verdict=='PARK' %}selected{% endif %}>⏸ PARK</option>
+      <option value="KILL" {% if filter_verdict=='KILL' %}selected{% endif %}>✗ KILL</option>
+    </select>
+  </div>
+  <div>
+    <label class="label">Status</label>
+    <select id="f-status" class="input text-sm" style="min-width:130px" onchange="applyFilters()">
+      <option value="" {% if not filter_status %}selected{% endif %}>All statuses</option>
+      <option value="new" {% if filter_status=='new' %}selected{% endif %}>New</option>
+      <option value="shipped" {% if filter_status=='shipped' %}selected{% endif %}>Shipped</option>
+      <option value="killed" {% if filter_status=='killed' %}selected{% endif %}>Killed</option>
+    </select>
+  </div>
+  <div>
+    <label class="label">Run</label>
+    <select id="f-run" class="input text-sm" style="min-width:140px" onchange="applyFilters()">
+      <option value="">All runs</option>
+      {% for r in runs %}
+      <option value="{{ r.id }}" {% if r.id == filter_run_id %}selected{% endif %}>
+        Run {{ r.id }} — {{ r.started_at[:10] if r.started_at else '?' }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="label">Min Score</label>
+    <input id="f-score" type="number" class="input text-sm" style="width:90px" placeholder="0"
+           value="{{ filter_min_score or '' }}" onchange="applyFilters()"/>
+  </div>
+</div>
+
+{% if not ideas %}
+<div class="card p-12 text-center">
+  <div class="text-5xl mb-4">💡</div>
+  <div class="text-lg font-semibold text-[#e2e2f0] mb-2">No ideas yet</div>
+  <p class="text-[#8888aa] text-sm mb-6">Add research and run "Find New Ideas" to generate ranked video concepts.</p>
+  <a href="/ideas/run" class="btn-primary">Find New Ideas →</a>
+</div>
+{% else %}
+
+<div class="space-y-3" id="ideas-list">
+{% for idea in ideas %}
+<div class="card hover:border-[#3a3a5a] transition-all" id="idea-{{ idea.id }}">
+  <!-- Card header -->
+  <div class="p-5 flex items-start gap-4">
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2 flex-wrap mb-1">
+        <span class="chip verdict-{{ idea.verdict }}">{{ idea.verdict.replace('_', ' ') }}</span>
+        {% if idea.status == 'shipped' %}
+        <span class="chip" style="background:#1a2e3a;color:#7dd3fc;border:1px solid #0369a1;">Shipped</span>
+        {% elif idea.status == 'killed' %}
+        <span class="chip" style="background:#1f1212;color:#f87171;border:1px solid #7f1d1d;">Killed</span>
+        {% endif %}
+        {% if idea.get('virgin_gold') %}
+        <span class="chip" style="background:#2d1b00;color:#fde68a;border:1px solid #92400e;">Virgin Gold</span>
+        {% endif %}
+        <span class="text-xs text-[#5a5a72] ml-auto">Score: <span class="text-[#c0c0d8] font-semibold">{{ "%.1f"|format(idea.final_score or 0) }}</span></span>
+      </div>
+      <div class="text-base font-semibold text-[#e2e2f0] leading-snug">{{ idea.title }}</div>
+      {% if idea.one_line %}
+      <div class="text-sm text-[#8888aa] mt-1">{{ idea.one_line }}</div>
+      {% endif %}
+    </div>
+    <div class="flex gap-2 flex-shrink-0 items-start">
+      <button onclick="toggleDetail('{{ idea.id }}')" class="btn-secondary text-xs py-1.5 px-3">Details</button>
+      {% if idea.status == 'new' and idea.verdict not in ['KILL'] %}
+      <button onclick="openShipModal({{ idea.id }}, '{{ idea.title | replace("'", "\\'") }}')"
+              class="btn-primary text-xs py-1.5 px-3">Mark Shipped</button>
+      {% endif %}
+      {% if idea.status == 'new' %}
+      <button onclick="killIdea({{ idea.id }})" class="btn-danger text-xs py-1.5 px-3">Kill</button>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Score breakdown bar -->
+  <div class="px-5 pb-3">
+    <div class="flex gap-4 text-xs text-[#8888aa]">
+      <span>Demand: <span class="text-[#c0c0d8]">{{ "%.1f"|format(idea.demand_score or 0) }}/10</span></span>
+      <span>Structure: <span class="text-[#c0c0d8]">{{ "%.1f"|format(idea.structural_score or 0) }}/10</span></span>
+      <span>Staleness: <span class="text-[#c0c0d8]">{{ idea.staleness_mult or 1.0 }}×</span></span>
+      <span>Gate: <span class="{% if idea.freshness_gate == 0 %}text-red-400{% else %}text-green-400{% endif %}">{{ '✓ Open' if idea.freshness_gate else '✗ Burned' }}</span></span>
+    </div>
+  </div>
+
+  <!-- Expandable detail panel -->
+  <div id="detail-{{ idea.id }}" class="detail-panel border-t border-[#2e2e42]">
+    <div class="p-5">
+      {% if idea.angle_note %}
+      <div class="mb-4">
+        <div class="text-xs text-[#8888aa] font-medium mb-1">Thumbnail / Hook Angle</div>
+        <div class="text-sm text-[#c0c0d8]">{{ idea.angle_note }}</div>
+      </div>
+      {% endif %}
+      {% if idea.frame_used %}
+      <div class="mb-4">
+        <div class="text-xs text-[#8888aa] font-medium mb-1">Frame Used</div>
+        <div class="text-sm text-[#c0c0d8]">{{ idea.frame_used }}</div>
+      </div>
+      {% endif %}
+      {% if idea.get('reframe') %}
+      <div class="mb-4 p-3 rounded-lg" style="background:#1a1a2e;border:1px solid #6366f1;">
+        <div class="text-xs text-[#818cf8] font-medium mb-1">Suggested Reframe</div>
+        <div class="text-sm text-[#e2e2f0] font-medium">{{ idea.reframe }}</div>
+      </div>
+      {% endif %}
+
+      {% if idea.evidence %}
+      <div class="mb-2">
+        <div class="text-xs text-[#8888aa] font-medium mb-2">Evidence Table</div>
+        <div class="overflow-x-auto">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Matched Video</th>
+                <th>Views</th>
+                <th>Rel. Perf</th>
+                <th>Age</th>
+                <th>Format Match</th>
+                <th>Type</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for e in idea.evidence[:10] %}
+              <tr>
+                <td class="max-w-xs">
+                  {% if e.yt_video_id %}
+                  <a href="https://youtube.com/watch?v={{ e.yt_video_id }}" target="_blank"
+                     class="text-[#818cf8] hover:underline truncate block max-w-xs">
+                    {{ e.matched_title[:60] }}
+                  </a>
+                  {% else %}
+                  <span class="text-[#c0c0d8] truncate block max-w-xs">{{ e.matched_title[:60] }}</span>
+                  {% endif %}
+                </td>
+                <td>{{ "{:,}".format(e.views or 0) }}</td>
+                <td>
+                  <span class="{% if (e.relative_perf or 0) >= 3 %}text-green-400{% elif (e.relative_perf or 0) >= 1 %}text-yellow-400{% else %}text-red-400{% endif %}">
+                    {{ "%.1f"|format(e.relative_perf or 0) }}×
+                  </span>
+                </td>
+                <td>{{ "%.0f"|format(e.age_months or 0) }}mo</td>
+                <td>
+                  {% if e.format_match %}<span class="text-green-400">✓</span>{% else %}<span class="text-[#5a5a72]">—</span>{% endif %}
+                </td>
+                <td class="text-[#8888aa]">{{ e.check_type }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% else %}
+      <div class="text-xs text-[#5a5a72]">No validation evidence (idea was not live-validated).</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endfor %}
+</div>
+{% endif %}
+
+<!-- Ship modal -->
+<div id="ship-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="text-base font-semibold mb-1">Mark as Shipped</div>
+    <div class="text-sm text-[#8888aa] mb-4" id="ship-title"></div>
+    <label class="label">Published video URL</label>
+    <input id="ship-url" type="url" class="input mb-2" placeholder="https://youtube.com/watch?v=..."/>
+    <div id="ship-status" class="hidden text-sm mb-3"></div>
+    <div class="flex gap-3 justify-end mt-4">
+      <button onclick="closeShipModal()" class="btn-secondary text-sm">Cancel</button>
+      <button onclick="submitShip()" class="btn-primary text-sm">Save Result</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+function toggleDetail(ideaId) {
+  const el = document.getElementById('detail-' + ideaId);
+  el.classList.toggle('open');
+}
+
+function applyFilters() {
+  const params = new URLSearchParams();
+  const niche = document.getElementById('f-niche').value;
+  const verdict = document.getElementById('f-verdict').value;
+  const status = document.getElementById('f-status').value;
+  const run = document.getElementById('f-run').value;
+  const score = document.getElementById('f-score').value;
+  if (niche) params.set('niche_id', niche);
+  if (verdict) params.set('verdict', verdict);
+  if (status) params.set('status', status);
+  if (run) params.set('run_id', run);
+  if (score) params.set('min_score', score);
+  window.location.href = '/ideas?' + params.toString();
+}
+
+async function killIdea(id) {
+  if (!confirm('Mark this idea as killed?')) return;
+  const d = await apiPost(`/api/ideas/${id}/kill`, new FormData());
+  if (d.ok) {
+    const card = document.getElementById('idea-' + id);
+    if (card) card.style.opacity = '0.5';
+    showToast('Idea killed.', 'success');
+  } else showToast('Failed.', 'error');
+}
+
+let shipIdeaId = null;
+function openShipModal(id, title) {
+  shipIdeaId = id;
+  document.getElementById('ship-title').textContent = title;
+  document.getElementById('ship-url').value = '';
+  document.getElementById('ship-status').classList.add('hidden');
+  document.getElementById('ship-modal').classList.remove('hidden');
+}
+function closeShipModal() {
+  document.getElementById('ship-modal').classList.add('hidden');
+  shipIdeaId = null;
+}
+
+async function submitShip() {
+  if (!shipIdeaId) return;
+  const url = document.getElementById('ship-url').value.trim();
+  if (!url) return showToast('Please enter the video URL.', 'error');
+  const fd = new FormData(); fd.append('video_url', url);
+  const statusEl = document.getElementById('ship-status');
+  statusEl.className = 'text-sm mb-3 text-yellow-400';
+  statusEl.textContent = 'Fetching video stats...';
+  statusEl.classList.remove('hidden');
+  const d = await apiPost(`/api/ideas/${shipIdeaId}/ship`, fd);
+  if (d.ok) {
+    closeShipModal();
+    showToast(`Shipped! ${(d.views||0).toLocaleString()} views (${(d.outlier_score||0).toFixed(1)}× your median)`, 'success', 5000);
+    setTimeout(() => location.reload(), 1500);
+  } else {
+    statusEl.className = 'text-sm mb-3 text-red-400';
+    statusEl.textContent = d.message || 'Failed. Check the URL and try again.';
+  }
+}
+</script>
+{% endblock %}

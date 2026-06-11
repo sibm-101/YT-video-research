@@ -1,0 +1,9 @@
+You will be given OUTLIER videos (each performing 3x+ its channel's median) and AVERAGE videos from the same niche. Identify repeatable content patterns that explain the outliers and are NOT common in the average set.
+
+For each distinct pattern return: topic (the subject category), frame (the reusable title formula with placeholders like [Entity], [Number], [Outcome]), mechanics (emotional drivers present, comma-separated), evidence_titles (2-3 example outlier titles using this pattern).
+
+Focus on patterns with at least 2 pieces of evidence. Ignore one-offs.
+
+Respond with valid JSON only. No markdown fences, no preamble.
+
+JSON: {"patterns": [{"topic": "", "frame": "", "mechanics": "", "evidence_titles": []}]}

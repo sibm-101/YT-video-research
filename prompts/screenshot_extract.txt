@@ -1,0 +1,5 @@
+You are extracting video data from a screenshot of a YouTube page (channel grid, search results, or home feed). For every visible video return: title (exact text), view_string (e.g. '7.4M views'), age_string (e.g. '10 months ago'), duration_string if visible, channel_name if visible, channel_subs_string if visible. Also return page_channel (name, handle, subs_string) if this is a single channel's page. Ignore UI elements, ads, and Shorts shelves.
+
+Respond with valid JSON only. No markdown fences, no preamble.
+
+JSON: {"page_channel": {"name": "", "handle": "", "subs_string": ""} or null, "videos": [{"title": "", "view_string": "", "age_string": "", "duration_string": "", "channel_name": ""}]}

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Setup — Viral Idea Engine</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    body { background: #13131f; color: #e2e2f0; font-family: 'Inter', sans-serif; }
+    .card { background: #1e1e2e; border: 1px solid #2e2e42; border-radius: 16px; }
+    .input { background: #252535; border: 1px solid #3a3a52; border-radius: 8px; padding: 10px 14px; color: #e2e2f0; width: 100%; outline: none; transition: border-color 0.15s; }
+    .input:focus { border-color: #6366f1; }
+    .btn-primary { background: #6366f1; color: white; padding: 10px 24px; border-radius: 8px; font-weight: 500; cursor: pointer; border: none; transition: background 0.15s; }
+    .btn-primary:hover { background: #4f46e5; }
+    .btn-secondary { background: #252535; color: #a0a0c0; padding: 10px 24px; border-radius: 8px; font-weight: 500; cursor: pointer; border: 1px solid #3a3a52; transition: all 0.15s; }
+    .btn-secondary:hover { background: #2e2e42; color: #e2e2f0; }
+    .step-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; }
+    .step-dot.active { background: #6366f1; color: white; }
+    .step-dot.done { background: #22c55e; color: white; }
+    .step-dot.inactive { background: #252535; color: #8888aa; border: 1px solid #3a3a52; }
+    .status-ok { color: #22c55e; font-size: 13px; margin-top: 6px; display: flex; align-items: center; gap-4px; }
+    .status-err { color: #f87171; font-size: 13px; margin-top: 6px; }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-8">
+<div class="max-w-xl w-full">
+  <div class="text-center mb-10">
+    <div class="text-2xl font-bold text-[#e2e2f0] mb-2">Viral Idea Engine</div>
+    <div class="text-[#8888aa] text-sm">One-time setup — takes about 2 minutes</div>
+  </div>
+
+  <!-- Step indicators -->
+  <div class="flex items-center justify-center gap-3 mb-8" id="step-indicators">
+    <div class="flex items-center gap-2">
+      <div id="dot-1" class="step-dot active">1</div>
+      <span class="text-sm text-[#8888aa]">Anthropic</span>
+    </div>
+    <div class="w-10 h-px bg-[#3a3a52]"></div>
+    <div class="flex items-center gap-2">
+      <div id="dot-2" class="step-dot inactive">2</div>
+      <span class="text-sm text-[#8888aa]">YouTube</span>
+    </div>
+    <div class="w-10 h-px bg-[#3a3a52]"></div>
+    <div class="flex items-center gap-2">
+      <div id="dot-3" class="step-dot inactive">3</div>
+      <span class="text-sm text-[#8888aa]">Reddit (optional)</span>
+    </div>
+  </div>
+
+  <!-- Step 1: Anthropic -->
+  <div id="step-1" class="card p-8">
+    <div class="text-lg font-semibold mb-1">Step 1 of 3: Anthropic API Key</div>
+    <p class="text-[#8888aa] text-sm mb-6">The engine uses Claude AI to generate and score ideas. You need an Anthropic API key.</p>
+    <div class="mb-2">
+      <label class="block text-xs text-[#8888aa] mb-2 font-medium">Anthropic API Key</label>
+      <input id="anthropic-key" type="password" class="input" placeholder="sk-ant-..."/>
+    </div>
+    <div id="anthropic-status" class="hidden mb-4 text-sm"></div>
+    <div class="flex gap-3 mt-4">
+      <button onclick="testAnthropic()" class="btn-secondary text-sm">Test Connection</button>
+      <button onclick="nextStep(1)" id="next-1" class="btn-primary" disabled>Next →</button>
+    </div>
+    <div class="mt-4 text-xs text-[#5a5a72]">
+      Get a key at <span class="text-[#818cf8]">console.anthropic.com</span> — create an account and go to API Keys.
+    </div>
+  </div>
+
+  <!-- Step 2: YouTube -->
+  <div id="step-2" class="card p-8 hidden">
+    <div class="text-lg font-semibold mb-1">Step 2 of 3: YouTube API Key</div>
+    <p class="text-[#8888aa] text-sm mb-5">Used to pull channel data and validate ideas against real YouTube performance.</p>
+
+    <details class="mb-5 text-sm">
+      <summary class="cursor-pointer text-[#818cf8] font-medium">▸ How to get a YouTube API key (click to expand)</summary>
+      <ol class="mt-3 space-y-2 text-[#8888aa] list-decimal pl-5">
+        <li>Go to <strong class="text-[#c0c0d8]">console.cloud.google.com</strong> and sign in</li>
+        <li>Create a new project (or select an existing one)</li>
+        <li>Click <strong class="text-[#c0c0d8]">APIs &amp; Services → Library</strong></li>
+        <li>Search for <strong class="text-[#c0c0d8]">"YouTube Data API v3"</strong> and click Enable</li>
+        <li>Click <strong class="text-[#c0c0d8]">APIs &amp; Services → Credentials → Create Credentials → API Key</strong></li>
+        <li>Copy the key and paste it below</li>
+      </ol>
+    </details>
+
+    <div class="mb-2">
+      <label class="block text-xs text-[#8888aa] mb-2 font-medium">YouTube Data API v3 Key</label>
+      <input id="youtube-key" type="password" class="input" placeholder="AIza..."/>
+    </div>
+    <div id="youtube-status" class="hidden mb-4 text-sm"></div>
+    <div class="flex gap-3 mt-4">
+      <button onclick="nextStep(1, true)" class="btn-secondary text-sm">← Back</button>
+      <button onclick="testYouTube()" class="btn-secondary text-sm">Test Connection</button>
+      <button onclick="nextStep(2)" id="next-2" class="btn-primary" disabled>Next →</button>
+    </div>
+  </div>
+
+  <!-- Step 3: Reddit (optional) -->
+  <div id="step-3" class="card p-8 hidden">
+    <div class="text-lg font-semibold mb-1">Step 3 of 3: Reddit (Optional)</div>
+    <p class="text-[#8888aa] text-sm mb-5">Reddit can seed the engine with proven topic demand from upvoted posts. This is optional — you can skip it and enable it later in Settings.</p>
+
+    <div class="mb-4">
+      <label class="block text-xs text-[#8888aa] mb-2 font-medium">Reddit Client ID</label>
+      <input id="reddit-id" type="text" class="input" placeholder="Leave blank to skip"/>
+    </div>
+    <div class="mb-4">
+      <label class="block text-xs text-[#8888aa] mb-2 font-medium">Reddit Client Secret</label>
+      <input id="reddit-secret" type="password" class="input" placeholder="Leave blank to skip"/>
+    </div>
+    <div class="flex gap-3 mt-4">
+      <button onclick="nextStep(2, true)" class="btn-secondary text-sm">← Back</button>
+      <button onclick="skipReddit()" class="btn-secondary text-sm">Skip for now</button>
+      <button onclick="saveAll()" class="btn-primary">Finish Setup →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let keys = { anthropic: '', youtube: '' };
+
+async function testAnthropic() {
+  const key = document.getElementById('anthropic-key').value.trim();
+  if (!key) return showStatus('anthropic', 'Please enter your API key first.', false);
+  showStatus('anthropic', 'Testing...', null);
+  const fd = new FormData(); fd.append('key', key);
+  const r = await fetch('/api/setup/test-anthropic', {method:'POST', body:fd});
+  const d = await r.json();
+  showStatus('anthropic', d.message, d.ok);
+  if (d.ok) { keys.anthropic = key; document.getElementById('next-1').disabled = false; }
+}
+
+async function testYouTube() {
+  const key = document.getElementById('youtube-key').value.trim();
+  if (!key) return showStatus('youtube', 'Please enter your API key first.', false);
+  showStatus('youtube', 'Testing...', null);
+  const fd = new FormData(); fd.append('key', key);
+  const r = await fetch('/api/setup/test-youtube', {method:'POST', body:fd});
+  const d = await r.json();
+  showStatus('youtube', d.message, d.ok);
+  if (d.ok) { keys.youtube = key; document.getElementById('next-2').disabled = false; }
+}
+
+function showStatus(field, msg, ok) {
+  const el = document.getElementById(`${field}-status`);
+  el.className = `text-sm mt-2 ${ok === null ? 'text-yellow-400' : ok ? 'text-green-400' : 'text-red-400'}`;
+  el.textContent = ok === null ? '⏳ ' + msg : ok ? '✓ ' + msg : '✗ ' + msg;
+  el.classList.remove('hidden');
+}
+
+function nextStep(fromStep, goBack=false) {
+  const show = goBack ? fromStep : fromStep + 1;
+  for (let i = 1; i <= 3; i++) {
+    document.getElementById(`step-${i}`).classList.add('hidden');
+    const dot = document.getElementById(`dot-${i}`);
+    dot.className = `step-dot ${i < show ? 'done' : i === show ? 'active' : 'inactive'}`;
+  }
+  document.getElementById(`step-${show}`).classList.remove('hidden');
+}
+
+async function skipReddit() {
+  await saveAll(true);
+}
+
+async function saveAll(skipReddit=false) {
+  const ant = document.getElementById('anthropic-key').value.trim();
+  const yt = document.getElementById('youtube-key').value.trim();
+  if (!ant || !yt) {
+    alert('Please complete steps 1 and 2 first.');
+    return;
+  }
+  const fd = new FormData();
+  fd.append('anthropic_key', ant);
+  fd.append('youtube_key', yt);
+  if (!skipReddit) {
+    fd.append('reddit_id', document.getElementById('reddit-id').value.trim());
+    fd.append('reddit_secret', document.getElementById('reddit-secret').value.trim());
+  }
+  const r = await fetch('/api/setup/save', {method:'POST', body:fd});
+  const d = await r.json();
+  if (d.ok) window.location.href = '/';
+  else alert(d.message || 'Failed to save. Please try again.');
+}
+</script>
+</body>
+</html>

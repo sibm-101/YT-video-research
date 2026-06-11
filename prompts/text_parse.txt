@@ -1,0 +1,5 @@
+Below is raw pasted text containing YouTube video data in an unknown layout. Extract every video into: title, view_string, age_string, channel_name (null if not stated). Infer nothing that is not present. Only include entries where a title is clearly identifiable.
+
+Respond with valid JSON only. No markdown fences, no preamble.
+
+JSON: {"videos": [{"title": "", "view_string": "", "age_string": "", "channel_name": null}]}

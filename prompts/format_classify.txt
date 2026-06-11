@@ -1,0 +1,5 @@
+Given a channel's name, description, and recent titles, classify its content format in 2 to 5 words. Examples: "animated comedy listicle", "documentary reenactment", "talking head essay", "faceless stock-footage narration", "tutorial screencast", "interview podcast clips". Also return audience_tone in 3 words (e.g., "curious history nerds", "aspiring golf improvers").
+
+Respond with valid JSON only. No markdown fences, no preamble.
+
+JSON: {"format_class": "", "audience_tone": ""}

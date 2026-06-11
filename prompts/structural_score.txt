@@ -1,0 +1,7 @@
+Score each candidate title against the provided niche rubric. For each rubric driver answer its detection_question (yes/no), then compute: base score = (drivers_present / total_drivers) × 10. Subtract 2 if the idea is pure "ironic trivia" (interesting facts but no clear actor, stakes, or consequence). Minimum score 0, maximum 10.
+
+Return one entry per title, in the same order as the input.
+
+Respond with valid JSON only. No markdown fences, no preamble.
+
+JSON: [{"title": "", "driver_answers": {"driver_name": true/false}, "score": 0.0, "weakness": "one-line description of what's missing"}]

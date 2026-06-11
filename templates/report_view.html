@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Report #{{ run_id }} — Viral Idea Engine{% endblock %}
+{% block head %}
+<style>
+#report-content h1 { color: #e2e2f0; font-size: 1.4rem; font-weight: 700; margin: 1.5rem 0 0.75rem; }
+#report-content h2 { color: #c0c0d8; font-size: 1.1rem; font-weight: 600; margin: 1.2rem 0 0.5rem; }
+#report-content strong { color: #e2e2f0; }
+#report-content table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 12px; }
+#report-content th { color: #8888aa; text-align: left; padding: 6px 8px; border-bottom: 1px solid #2e2e42; }
+#report-content td { padding: 6px 8px; border-bottom: 1px solid #252535; }
+#report-content hr { border-color: #2e2e42; margin: 1.5rem 0; }
+</style>
+{% endblock %}
+{% block content %}
+
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <div class="flex items-center gap-2 text-[#8888aa] text-sm mb-1">
+      <a href="/reports" class="hover:text-[#e2e2f0]">Reports</a>
+      <span>/</span>
+      <span>Run #{{ run_id }}</span>
+    </div>
+    <h1 class="text-2xl font-bold text-[#e2e2f0]">{{ run.niche_name if run else 'Unknown' }} — Run #{{ run_id }}</h1>
+  </div>
+  <div class="flex gap-2">
+    <a href="/reports/{{ run_id }}/download" class="btn-secondary text-sm">⬇ Download .md</a>
+    <a href="/ideas?run_id={{ run_id }}" class="btn-primary text-sm">View in Ideas →</a>
+  </div>
+</div>
+
+{% if content %}
+<div class="card p-8">
+  <div id="report-content" class="prose prose-invert max-w-none text-sm leading-relaxed text-[#c0c0d8]">
+    {{ content | replace('\n', '<br>') | safe }}
+  </div>
+</div>
+{% else %}
+<div class="card p-10 text-center text-[#8888aa]">Report file not found. Try viewing the ideas directly.</div>
+{% endif %}
+
+{% endblock %}

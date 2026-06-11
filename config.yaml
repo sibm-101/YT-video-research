@@ -1,0 +1,22 @@
+models:
+  parse_classify: claude-haiku-4-5-20251001
+  generate_reason: claude-sonnet-4-6
+outlier_threshold: 3.0
+longform_min_seconds: 180
+median_window_videos: 30
+ideas_per_run: 30
+validate_top: 25
+structural_min: 6
+staleness_months: 18
+burn_min_subs: 20000
+burn_fuzzy_threshold: 0.8
+max_searches_per_run: 60
+cache_days: 7
+wiki_min_monthly_views: 50000
+wiki_dead_monthly_views: 3000
+reddit:
+  enabled: false
+  subreddits:
+    history:
+      - AskHistorians
+      - todayilearned

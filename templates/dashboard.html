@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Viral Idea Engine{% endblock %}
+{% block content %}
+
+<div class="flex items-center justify-between mb-8">
+  <div>
+    <h1 class="text-2xl font-bold text-[#e2e2f0]">Dashboard</h1>
+    <div class="text-[#8888aa] text-sm mt-1">Your YouTube idea research hub</div>
+  </div>
+  <button onclick="showCreateNiche()" class="btn-primary flex items-center gap-2 text-sm">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+    New Niche
+  </button>
+</div>
+
+{% if not niches %}
+<div class="card p-12 text-center">
+  <div class="text-5xl mb-4">🎯</div>
+  <div class="text-lg font-semibold text-[#e2e2f0] mb-2">Create your first niche</div>
+  <p class="text-[#8888aa] text-sm mb-6 max-w-sm mx-auto">A niche is your research space — history, golf, finance, parenting — anything. Create one to get started.</p>
+  <button onclick="showCreateNiche()" class="btn-primary">Create a Niche</button>
+</div>
+{% else %}
+
+<!-- Niche switcher -->
+<div class="flex gap-2 flex-wrap mb-6">
+  {% for n in niches %}
+  <a href="/?niche_id={{ n.id }}"
+     class="px-4 py-2 rounded-lg text-sm font-medium transition-all
+       {% if active_niche and active_niche.id == n.id %}
+         bg-[#6366f1] text-white
+       {% else %}
+         bg-[#1e1e2e] text-[#8888aa] border border-[#2e2e42] hover:bg-[#252535] hover:text-[#e2e2f0]
+       {% endif %}">
+    {{ n.name }}
+  </a>
+  {% endfor %}
+</div>
+
+{% if active_niche %}
+<!-- Niche header + actions -->
+<div class="flex items-center justify-between mb-6">
+  <div class="flex items-center gap-3">
+    <h2 class="text-lg font-semibold text-[#e2e2f0]">{{ active_niche.name }}</h2>
+    <button onclick="renameNiche({{ active_niche.id }}, '{{ active_niche.name }}')"
+            class="text-xs text-[#8888aa] hover:text-[#e2e2f0] transition-colors">
+      Rename
+    </button>
+    <button onclick="confirmDeleteNiche({{ active_niche.id }}, '{{ active_niche.name }}')"
+            class="text-xs text-red-400 hover:text-red-300 transition-colors">
+      Delete
+    </button>
+  </div>
+</div>
+
+<!-- Stats row -->
+<div class="grid grid-cols-3 gap-4 mb-6">
+  <div class="card p-5">
+    <div class="text-xs text-[#8888aa] mb-1 font-medium">YouTube Quota Today</div>
+    <div class="text-xl font-bold text-[#e2e2f0] mb-2">{{ quota_used }} / 10,000</div>
+    <div class="quota-bar">
+      <div class="quota-fill {% if quota_used/10000 > 0.8 %}bg-red-500{% elif quota_used/10000 > 0.5 %}bg-yellow-500{% else %}bg-emerald-500{% endif %}"
+           style="width: {{ [quota_used/100, 100]|min }}%"></div>
+    </div>
+    <div class="text-xs text-[#8888aa] mt-2">Resets at midnight Pacific</div>
+  </div>
+  {% if last_run %}
+  <div class="card p-5">
+    <div class="text-xs text-[#8888aa] mb-1 font-medium">Last Run</div>
+    <div class="text-xl font-bold text-[#e2e2f0]">{{ last_run.ideas_survived or 0 }} ideas</div>
+    <div class="text-xs text-[#8888aa] mt-1">{{ last_run.started_at[:10] if last_run.started_at else 'Never' }}</div>
+  </div>
+  {% else %}
+  <div class="card p-5">
+    <div class="text-xs text-[#8888aa] mb-1 font-medium">Last Run</div>
+    <div class="text-xl font-bold text-[#5a5a72]">No runs yet</div>
+  </div>
+  {% endif %}
+  <div class="card p-5">
+    <div class="text-xs text-[#8888aa] mb-1 font-medium">Niche Created</div>
+    <div class="text-xl font-bold text-[#e2e2f0]">{{ active_niche.created_at[:10] if active_niche.created_at else '—' }}</div>
+  </div>
+</div>
+
+<!-- Big action cards -->
+<div class="grid grid-cols-3 gap-4">
+  <a href="/research?niche_id={{ active_niche.id }}" class="card p-6 hover:border-[#6366f1] transition-all cursor-pointer group">
+    <div class="w-10 h-10 rounded-xl bg-[#1a1a3e] flex items-center justify-center mb-4 group-hover:bg-[#252560]">
+      <svg class="w-5 h-5 text-[#818cf8]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+    </div>
+    <div class="font-semibold text-[#e2e2f0] mb-1">Add Research</div>
+    <div class="text-xs text-[#8888aa]">Paste URLs, upload screenshots, PDFs, or raw text</div>
+  </a>
+  <a href="/ideas/run?niche_id={{ active_niche.id }}" class="card p-6 hover:border-[#6366f1] transition-all cursor-pointer group">
+    <div class="w-10 h-10 rounded-xl bg-[#1a2e1a] flex items-center justify-center mb-4 group-hover:bg-[#1e381e]">
+      <svg class="w-5 h-5 text-[#86efac]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+    </div>
+    <div class="font-semibold text-[#e2e2f0] mb-1">Find New Ideas</div>
+    <div class="text-xs text-[#8888aa]">Generate and stress-test video ideas from your research</div>
+  </a>
+  <a href="/ideas?niche_id={{ active_niche.id }}" class="card p-6 hover:border-[#6366f1] transition-all cursor-pointer group">
+    <div class="w-10 h-10 rounded-xl bg-[#2e1a0e] flex items-center justify-center mb-4 group-hover:bg-[#3a2212]">
+      <svg class="w-5 h-5 text-[#fdba74]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+    </div>
+    <div class="font-semibold text-[#e2e2f0] mb-1">View Ideas</div>
+    <div class="text-xs text-[#8888aa]">Browse ranked ideas with verdicts and evidence</div>
+  </a>
+</div>
+{% endif %}
+{% endif %}
+
+<!-- Create niche modal -->
+<div id="create-niche-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="text-base font-semibold mb-4">Create New Niche</div>
+    <label class="block text-xs text-[#8888aa] mb-2">Niche name (e.g., Dark History, Golf Tips, Personal Finance)</label>
+    <input id="new-niche-name" type="text" class="input mb-4" placeholder="History" onkeydown="if(event.key==='Enter')createNiche()"/>
+    <div class="flex gap-3 justify-end">
+      <button onclick="hideCreateNiche()" class="btn-secondary text-sm">Cancel</button>
+      <button onclick="createNiche()" class="btn-primary text-sm">Create</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+function showCreateNiche() { document.getElementById('create-niche-modal').classList.remove('hidden'); document.getElementById('new-niche-name').focus(); }
+function hideCreateNiche() { document.getElementById('create-niche-modal').classList.add('hidden'); }
+
+async function createNiche() {
+  const name = document.getElementById('new-niche-name').value.trim();
+  if (!name) return;
+  const fd = new FormData(); fd.append('name', name);
+  const d = await apiPost('/api/niches/create', fd);
+  if (d.ok) window.location.href = `/?niche_id=${d.id}`;
+  else showToast(d.message, 'error');
+}
+
+async function renameNiche(id, currentName) {
+  const name = prompt('New name:', currentName);
+  if (!name || name === currentName) return;
+  const fd = new FormData(); fd.append('name', name);
+  const d = await apiPost(`/api/niches/${id}/rename`, fd);
+  if (d.ok) location.reload();
+  else showToast(d.message, 'error');
+}
+
+async function confirmDeleteNiche(id, name) {
+  if (!confirm(`Delete "${name}" and all its data? This cannot be undone.`)) return;
+  const d = await apiDelete(`/api/niches/${id}`);
+  if (d.ok) window.location.href = '/';
+  else showToast('Failed to delete niche.', 'error');
+}
+</script>
+{% endblock %}

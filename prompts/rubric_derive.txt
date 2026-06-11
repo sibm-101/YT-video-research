@@ -1,0 +1,7 @@
+Compare these OUTLIER videos against AVERAGE videos from the same niche. Derive the 4 to 6 emotional and structural drivers that most reliably separate outliers from average performers in THIS specific niche. Do not use generic advice — the drivers must be specific and observable from titles.
+
+For each driver: name (2-4 words), definition (one sentence explaining it), detection_question (a yes/no question you can ask of any candidate title to check for this driver's presence).
+
+Respond with valid JSON only. No markdown fences, no preamble.
+
+JSON: {"rubric": [{"name": "", "definition": "", "detection_question": ""}]}
