@@ -141,12 +141,21 @@ def run_ideas_job(job_id: int, niche_id: int, n_ideas: int, validate_top: int):
 
         # Stage 3: pattern extraction + rubric
         upd("Extracting patterns from outliers...", 20)
-        pattern_result = claude_client.extract_patterns(outliers, averages, niche_name)
-        patterns = pattern_result.get("patterns", [])
+        patterns = []
+        try:
+            pattern_result = claude_client.extract_patterns(outliers, averages, niche_name)
+            if isinstance(pattern_result, dict):
+                patterns = pattern_result.get("patterns", [])
+            elif isinstance(pattern_result, list):
+                patterns = pattern_result
+        except Exception as e:
+            logger.warning("Pattern extraction failed, continuing without patterns: %s", e)
 
         # Store patterns
         db.execute("DELETE FROM patterns WHERE niche_id=?", (niche_id,))
         for p in patterns:
+            if not isinstance(p, dict):
+                continue
             db.execute("""
                 INSERT INTO patterns (niche_id, topic, frame, mechanics_json, evidence_video_ids, created_at)
                 VALUES (?,?,?,?,?,?)
@@ -157,8 +166,15 @@ def run_ideas_job(job_id: int, niche_id: int, n_ideas: int, validate_top: int):
         db.commit()
 
         upd("Deriving niche rubric...", 30)
-        rubric_result = claude_client.derive_rubric(outliers, averages, niche_name)
-        rubric = rubric_result.get("rubric", [])
+        rubric = []
+        try:
+            rubric_result = claude_client.derive_rubric(outliers, averages, niche_name)
+            if isinstance(rubric_result, dict):
+                rubric = rubric_result.get("rubric", [])
+            elif isinstance(rubric_result, list):
+                rubric = rubric_result
+        except Exception as e:
+            logger.warning("Rubric derivation failed, continuing without rubric: %s", e)
         db.execute("UPDATE niches SET rubric_json=? WHERE id=?",
                    (json.dumps(rubric), niche_id))
         db.commit()
