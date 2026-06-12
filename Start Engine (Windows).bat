@@ -63,6 +63,10 @@ echo.
 REM Open browser after a short delay (in background)
 start "" cmd /c "timeout /t 3 /nobreak >nul && start http://127.0.0.1:8787"
 
+REM UTF-8 mode so Unicode characters in API responses don't crash the console
+set PYTHONUTF8=1
+chcp 65001 >nul 2>&1
+
 REM Run uvicorn in THIS window so errors are visible
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8787
 
