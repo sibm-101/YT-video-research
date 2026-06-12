@@ -184,3 +184,60 @@ def get_verdict(idea: dict, structural_score: float, evidence: list) -> dict:
     user += f"Structural score: {structural_score}/10\n\n"
     user += f"EVIDENCE:\n{json.dumps(evidence[:20], indent=2)}"
     return _call(model, prompt, user, max_tokens=1024)
+
+
+def judge_faceless_batch(channels: list[dict]) -> list[dict]:
+    """
+    Batch-judge a list of channels for faceless status.
+    Each channel dict must have: name, description, video_titles (list), yt_channel_id.
+    Returns list of {yt_channel_id, faceless_judgment, faceless_confidence, faceless_reason, niche_guess}.
+    Uses the cheap parse_classify model (Haiku) as specified.
+    """
+    cfg = load_config()
+    model = cfg["models"]["parse_classify"]
+    prompt = _load_prompt("faceless_judge.txt")
+    results = []
+    # Process in batches of 5 to stay within token limits
+    for i in range(0, len(channels), 5):
+        batch = channels[i:i+5]
+        user = "Judge each of these channels:\n\n"
+        for ch in batch:
+            user += f"---\nChannel ID: {ch['yt_channel_id']}\n"
+            user += f"Name: {ch.get('name', '')}\n"
+            user += f"Description: {ch.get('description', '')[:400]}\n"
+            titles = ch.get("video_titles", [])
+            user += f"Video titles: {json.dumps(titles[:20])}\n"
+        user += f"\nReturn a JSON array with one object per channel in the same order."
+        try:
+            raw = _call(model, prompt, user, max_tokens=2048)
+            if isinstance(raw, list):
+                for j, ch in enumerate(batch):
+                    entry = raw[j] if j < len(raw) else {}
+                    results.append({
+                        "yt_channel_id": ch["yt_channel_id"],
+                        "faceless_judgment": entry.get("faceless", "unclear"),
+                        "faceless_confidence": float(entry.get("confidence", 0.5)),
+                        "faceless_reason": entry.get("reason", ""),
+                        "niche_guess": entry.get("niche_guess", ""),
+                    })
+            elif isinstance(raw, dict):
+                # Single channel response
+                for ch in batch:
+                    results.append({
+                        "yt_channel_id": ch["yt_channel_id"],
+                        "faceless_judgment": raw.get("faceless", "unclear"),
+                        "faceless_confidence": float(raw.get("confidence", 0.5)),
+                        "faceless_reason": raw.get("reason", ""),
+                        "niche_guess": raw.get("niche_guess", ""),
+                    })
+        except Exception as e:
+            logger.warning("faceless_judge batch failed: %s", e)
+            for ch in batch:
+                results.append({
+                    "yt_channel_id": ch["yt_channel_id"],
+                    "faceless_judgment": "unclear",
+                    "faceless_confidence": 0.0,
+                    "faceless_reason": "Judgment unavailable.",
+                    "niche_guess": "",
+                })
+    return results

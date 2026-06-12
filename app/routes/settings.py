@@ -58,6 +58,27 @@ async def save_settings(request: Request):
     if "reddit_enabled" in data:
         cfg["reddit"]["enabled"] = bool(data["reddit_enabled"])
 
+    # Channel Hunter settings
+    if "hunter" not in cfg:
+        cfg["hunter"] = {}
+    hunter_num = {
+        "hunter_max_age": "max_channel_age_days",
+        "hunter_min_views": "min_breakout_views",
+        "hunter_max_seeds": "max_seeds_per_hunt",
+    }
+    for form_key, cfg_key in hunter_num.items():
+        if form_key in data:
+            try:
+                cfg["hunter"][cfg_key] = int(data[form_key])
+            except (ValueError, TypeError):
+                pass
+    if "hunter_region" in data and data["hunter_region"]:
+        cfg["hunter"]["region"] = data["hunter_region"].upper()[:2]
+    if "hunter_seeds" in data:
+        seeds = [s.strip() for s in data["hunter_seeds"].splitlines() if s.strip()]
+        if seeds:
+            cfg["hunter"]["seed_keywords"] = seeds
+
     save_config(cfg)
     return JSONResponse({"ok": True, "message": "Settings saved."})
 

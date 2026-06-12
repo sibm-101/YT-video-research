@@ -383,6 +383,17 @@ def start_job(job_type: str, niche_id: int, **kwargs) -> int:
                   kwargs.get("validate_top", 25)),
             daemon=True
         )
+    elif job_type == "hunt":
+        from app.pipeline.hunter import run_hunt
+        quota_tracker = {"used": 0}
+        t = threading.Thread(
+            target=run_hunt,
+            args=(job_id, kwargs["hunt_id"], kwargs["seed_keywords"],
+                  kwargs.get("region", "US"), kwargs.get("max_channel_age_days", 30),
+                  kwargs.get("min_breakout_views", 500000),
+                  kwargs.get("include_shorts", False), quota_tracker),
+            daemon=True
+        )
     else:
         raise ValueError(f"Unknown job type: {job_type}")
 

@@ -7,7 +7,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.database import init_db
 from app.config import has_keys
-from app.routes import setup, dashboard, research, ideas, library, reports, settings, jobs
+from app.routes import setup, dashboard, research, ideas, library, reports, settings, jobs, channel_hunter
 
 logging.basicConfig(
     level=logging.INFO,
@@ -34,6 +34,7 @@ app.include_router(library.router)
 app.include_router(reports.router)
 app.include_router(settings.router)
 app.include_router(jobs.router)
+app.include_router(channel_hunter.router)
 
 
 @app.middleware("http")

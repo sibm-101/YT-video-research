@@ -1,0 +1,523 @@
+{% extends "base.html" %}
+{% block title %}Channel Hunter — Viral Idea Engine{% endblock %}
+{% block head %}
+<style>
+.keyword-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #1e1e38; border: 1px solid #3a3a52; border-radius: 20px;
+  padding: 4px 12px; font-size: 13px; color: #c0c0d8; cursor: default;
+}
+.keyword-chip button {
+  color: #5a5a72; background: none; border: none; cursor: pointer;
+  padding: 0; font-size: 12px; line-height: 1;
+}
+.keyword-chip button:hover { color: #f87171; }
+.ratio-badge {
+  background: #1a2e1a; color: #86efac; border: 1px solid #166534;
+  padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;
+}
+.faceless-likely { background: #1e1e38; color: #818cf8; border: 1px solid #4338ca; }
+.faceless-unlikely { background: #1f1212; color: #f87171; border: 1px solid #7f1d1d; }
+.faceless-unclear { background: #1a1a24; color: #8888aa; border: 1px solid #3a3a52; }
+</style>
+{% endblock %}
+{% block content %}
+
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-bold text-[#e2e2f0]">Channel Hunter</h1>
+    <p class="text-[#8888aa] text-sm mt-1">Find brand-new YouTube channels that are already blowing up</p>
+  </div>
+  {% if hunts %}
+  <select id="hunt-history-select" class="input text-sm" style="max-width:220px"
+          onchange="switchHunt(this.value)">
+    <option value="">— Past hunts —</option>
+    {% for h in hunts %}
+    <option value="{{ h.id }}" {% if active_hunt and h.id == active_hunt.id %}selected{% endif %}>
+      {{ h.started_at[:10] if h.started_at else '?' }} · {{ h.results_found or 0 }} results
+    </option>
+    {% endfor %}
+  </select>
+  {% endif %}
+</div>
+
+<!-- Configuration panel -->
+<div id="config-panel" class="card p-6 mb-5">
+  <div class="grid grid-cols-2 gap-5 mb-5">
+    <div>
+      <label class="label">Max channel age (days)</label>
+      <input id="max-age" type="number" class="input" value="{{ hunter_cfg.max_channel_age_days or 30 }}"
+             min="1" max="365" oninput="updateEstimate()"/>
+      <div class="text-xs text-[#5a5a72] mt-1">Only channels created within this many days are kept</div>
+    </div>
+    <div>
+      <label class="label">Minimum breakout views</label>
+      <input id="min-views" type="number" class="input" value="{{ hunter_cfg.min_breakout_views or 500000 }}"
+             step="50000" oninput="updateEstimate()"/>
+      <div class="text-xs text-[#5a5a72] mt-1">The channel's best video must have at least this many views</div>
+    </div>
+    <div>
+      <label class="label">Search region</label>
+      <input id="region" type="text" class="input" value="{{ hunter_cfg.region or 'US' }}"
+             maxlength="2" style="text-transform:uppercase;max-width:80px"/>
+      <div class="text-xs text-[#5a5a72] mt-1">Two-letter country code (US, GB, CA, AU…)</div>
+    </div>
+    <div>
+      <label class="flex items-center gap-2 cursor-pointer mt-5">
+        <input type="checkbox" id="include-shorts" class="w-4 h-4 accent-indigo-500"
+               {% if hunter_cfg.include_shorts %}checked{% endif %}/>
+        <span class="text-sm text-[#c0c0d8]">Include YouTube Shorts</span>
+      </label>
+      <div class="text-xs text-[#5a5a72] mt-1">Off by default — Shorts skew view counts</div>
+    </div>
+  </div>
+
+  <!-- Seed keywords -->
+  <div class="mb-4">
+    <div class="flex items-center justify-between mb-2">
+      <label class="label mb-0">Seed keywords</label>
+      <div class="flex gap-2">
+        <button onclick="resetSeeds()" class="text-xs text-[#8888aa] hover:text-[#e2e2f0] transition-colors">Reset to defaults</button>
+        <button onclick="showAddKeyword()" class="text-xs text-[#818cf8] hover:text-indigo-300 transition-colors">+ Add keyword</button>
+      </div>
+    </div>
+    <div id="keyword-chips" class="flex flex-wrap gap-2 p-3 rounded-lg min-h-[52px]"
+         style="background:#1a1a2e;border:1px solid #2e2e42;"></div>
+    <div id="add-kw-row" class="hidden mt-2 flex gap-2">
+      <input id="new-kw" type="text" class="input text-sm" style="max-width:200px" placeholder="new keyword"
+             onkeydown="if(event.key==='Enter')addKeyword()"/>
+      <button onclick="addKeyword()" class="btn-primary text-xs">Add</button>
+      <button onclick="document.getElementById('add-kw-row').classList.add('hidden')" class="btn-secondary text-xs">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Quota estimate -->
+  <div id="quota-estimate" class="mb-5 p-3 rounded-lg text-sm" style="background:#1a1a2e;border:1px solid #2e2e42;">
+    <span id="quota-msg" class="text-[#8888aa]">Select keywords to see quota estimate</span>
+  </div>
+
+  <button id="start-btn" onclick="startHunt()" class="btn-primary px-10">
+    Start Hunt
+  </button>
+</div>
+
+<!-- Progress panel -->
+<div id="progress-panel" class="card p-6 mb-5 hidden">
+  <div class="flex items-center justify-between mb-4">
+    <div class="font-medium text-[#e2e2f0]">Hunt in Progress</div>
+    <button onclick="cancelHunt()" class="btn-danger text-xs px-3 py-1.5">Cancel</button>
+  </div>
+  <div class="space-y-1 mb-4" id="hunt-stages">
+    <div class="stage-item" id="hs-search"><div class="stage-dot"></div><span>Searching seed keywords</span></div>
+    <div class="stage-item" id="hs-age"><div class="stage-dot"></div><span>Filtering channels by age</span></div>
+    <div class="stage-item" id="hs-breakout"><div class="stage-dot"></div><span>Checking for breakout videos</span></div>
+    <div class="stage-item" id="hs-faceless"><div class="stage-dot"></div><span>Judging faceless status</span></div>
+    <div class="stage-item" id="hs-save"><div class="stage-dot"></div><span>Saving results</span></div>
+  </div>
+  <div class="progress-bar mb-3">
+    <div id="hunt-progress-fill" class="progress-fill" style="width:0%"></div>
+  </div>
+  <div id="hunt-progress-msg" class="text-sm text-[#8888aa]">Starting...</div>
+</div>
+
+<!-- Results filters + list -->
+{% if results or active_hunt %}
+<div class="mb-4 flex flex-wrap gap-3 items-end">
+  <div>
+    <label class="label">Sort by</label>
+    <select id="sort-by" class="input text-sm" style="min-width:150px" onchange="reloadResults()">
+      <option value="ratio">Views-to-subs ratio</option>
+      <option value="views">Breakout views</option>
+      <option value="age">Youngest first</option>
+    </select>
+  </div>
+  <div>
+    <label class="label">Faceless filter</label>
+    <select id="faceless-filter" class="input text-sm" style="min-width:150px" onchange="reloadResults()">
+      <option value="">All channels</option>
+      <option value="likely">Likely faceless only</option>
+    </select>
+  </div>
+  <div>
+    <label class="label">Min ratio</label>
+    <input id="min-ratio" type="number" class="input text-sm" style="width:80px" placeholder="0" step="10" onchange="reloadResults()"/>
+  </div>
+  <div>
+    <label class="label">Niche search</label>
+    <input id="niche-search" type="text" class="input text-sm" style="max-width:150px" placeholder="dark history…" onkeyup="reloadResults()"/>
+  </div>
+  <div>
+    <label class="label">Status</label>
+    <select id="status-filter" class="input text-sm" style="min-width:130px" onchange="reloadResults()">
+      <option value="">All</option>
+      <option value="new">New</option>
+      <option value="saved">Saved</option>
+      <option value="sent_to_engine">Sent to Engine</option>
+      <option value="dismissed">Dismissed</option>
+    </select>
+  </div>
+</div>
+
+<div id="results-container">
+{% if not results %}
+<div class="card p-10 text-center text-[#8888aa]">This hunt found no channels matching your criteria.</div>
+{% else %}
+<div class="text-xs text-[#5a5a72] mb-3">{{ results|length }} channel{{ 's' if results|length != 1 else '' }} found</div>
+<div class="space-y-3" id="results-list">
+{% for ch in results %}
+<div class="card" id="ch-{{ ch.id }}" data-ch-id="{{ ch.id }}">
+  <div class="p-5">
+    <div class="flex items-start gap-4">
+      <!-- Left: channel info -->
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 flex-wrap mb-1">
+          <!-- Faceless chip -->
+          <span class="chip faceless-{{ ch.faceless_judgment or 'unclear' }} text-xs">
+            {% if ch.faceless_judgment == 'likely' %}Likely Faceless{% elif ch.faceless_judgment == 'unlikely' %}Not Faceless{% else %}Unclear{% endif %}
+            {% if ch.faceless_confidence %} · {{ "%.0f"|format((ch.faceless_confidence or 0)*100) }}%{% endif %}
+          </span>
+          {% if ch.status == 'sent_to_engine' %}
+          <span class="chip text-xs" style="background:#1a2e3a;color:#7dd3fc;border:1px solid #0369a1;">Sent to Engine</span>
+          {% elif ch.status == 'saved' %}
+          <span class="chip text-xs" style="background:#1a2e1a;color:#86efac;border:1px solid #166534;">Saved</span>
+          {% elif ch.status == 'dismissed' %}
+          <span class="chip text-xs" style="background:#1f1212;color:#f87171;border:1px solid #7f1d1d;">Dismissed</span>
+          {% endif %}
+          {% if ch.niche_guess %}
+          <span class="text-xs text-[#8888aa] italic">{{ ch.niche_guess }}</span>
+          {% endif %}
+        </div>
+
+        <div class="flex items-center gap-3 mb-2">
+          <a href="{{ ch.url or ('https://youtube.com/channel/' + ch.yt_channel_id) }}"
+             target="_blank"
+             class="text-base font-semibold text-[#e2e2f0] hover:text-[#818cf8] transition-colors">
+            {{ ch.name }}
+          </a>
+          {% if ch.handle %}<span class="text-xs text-[#5a5a72]">{{ ch.handle }}</span>{% endif %}
+        </div>
+
+        <!-- Stats row -->
+        <div class="flex flex-wrap gap-4 text-sm mb-3">
+          <div>
+            <span class="text-[#8888aa] text-xs">Age</span>
+            <div class="font-semibold text-[#e2e2f0]">{{ ch.age_days or 0 }} days old</div>
+          </div>
+          <div>
+            <span class="text-[#8888aa] text-xs">Subscribers</span>
+            <div class="font-semibold text-[#e2e2f0]">{{ "{:,}".format(ch.subs or 0) }}</div>
+          </div>
+          <div>
+            <span class="text-[#8888aa] text-xs">Views-to-subs ratio</span>
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-[#818cf8] text-base">{{ "%.0f"|format(ch.views_to_subs_ratio or 0) }}×</span>
+              <span class="text-xs text-[#5a5a72]">its subscriber count</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Breakout video -->
+        {% if ch.breakout_video_id %}
+        <div class="mb-3 p-3 rounded-lg" style="background:#1a1a2e;border:1px solid #2e2e42;">
+          <div class="text-xs text-[#8888aa] mb-1 font-medium">Breakout Video</div>
+          <a href="https://youtube.com/watch?v={{ ch.breakout_video_id }}" target="_blank"
+             class="text-sm text-[#818cf8] hover:underline">
+            {% for v in ch.videos %}{% if v.rank == 1 %}{{ v.title[:70] }}{% endif %}{% endfor %}
+          </a>
+          <div class="text-xs text-[#c0c0d8] mt-0.5 font-semibold">{{ "{:,}".format(ch.breakout_views or 0) }} views</div>
+        </div>
+        {% endif %}
+
+        <!-- Top 3 videos -->
+        {% if ch.videos %}
+        <div>
+          <div class="text-xs text-[#8888aa] mb-1 font-medium">Top Videos</div>
+          <div class="space-y-1">
+            {% for v in ch.videos %}
+            <div class="flex items-center gap-3 text-xs">
+              <span class="text-[#5a5a72] w-4 flex-shrink-0">#{{ v.rank }}</span>
+              <a href="https://youtube.com/watch?v={{ v.yt_video_id }}" target="_blank"
+                 class="text-[#c0c0d8] hover:text-[#818cf8] transition-colors truncate flex-1">
+                {{ v.title[:65] }}
+              </a>
+              <span class="text-[#8888aa] flex-shrink-0">{{ "{:,}".format(v.views or 0) }}</span>
+              <span class="text-[#5a5a72] flex-shrink-0">{{ v.published_at[:10] if v.published_at else '' }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        {% if ch.faceless_reason %}
+        <div class="mt-2 text-xs text-[#5a5a72] italic">{{ ch.faceless_reason }}</div>
+        {% endif %}
+      </div>
+
+      <!-- Right: actions -->
+      <div class="flex flex-col gap-2 flex-shrink-0">
+        {% if ch.status != 'sent_to_engine' %}
+        <button onclick="openSendModal({{ ch.id }}, '{{ (ch.name or '') | replace("'", "\\'") }}', '{{ ch.niche_guess or '' }}')"
+                class="btn-primary text-xs py-1.5 px-3 whitespace-nowrap">
+          Send to Engine
+        </button>
+        {% else %}
+        <a href="/library" class="btn-secondary text-xs py-1.5 px-3 whitespace-nowrap text-center">View in Library</a>
+        {% endif %}
+        {% if ch.status not in ('saved', 'sent_to_engine') %}
+        <button onclick="updateStatus({{ ch.id }}, 'saved')" class="btn-secondary text-xs py-1.5 px-3">Save</button>
+        {% endif %}
+        {% if ch.status != 'dismissed' %}
+        <button onclick="updateStatus({{ ch.id }}, 'dismissed')" class="btn-secondary text-xs py-1.5 px-3">Dismiss</button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+</div>
+{% endif %}
+</div>
+{% endif %}
+
+<!-- Send to Engine modal -->
+<div id="send-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="text-base font-semibold mb-1">Send to Idea Engine</div>
+    <div class="text-sm text-[#8888aa] mb-4" id="send-channel-name"></div>
+    <label class="label">Choose a niche</label>
+    <select id="send-niche" class="input mb-2">
+      {% for n in niches %}
+      <option value="{{ n.id }}">{{ n.name }}</option>
+      {% endfor %}
+    </select>
+    {% if not niches %}
+    <p class="text-yellow-400 text-xs mb-2">No niches yet. <a href="/" class="underline">Create one on the Dashboard</a> first.</p>
+    {% endif %}
+    <div id="send-status" class="hidden text-sm mb-3"></div>
+    <div class="flex gap-3 justify-end mt-4">
+      <button onclick="closeSendModal()" class="btn-secondary text-sm">Cancel</button>
+      <button onclick="submitSend()" class="btn-primary text-sm" {% if not niches %}disabled{% endif %}>
+        Send to Engine
+      </button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+// ── Seed keyword chip management ──────────────────────────────────────────────
+let seeds = {{ seed_keywords_json | safe }};
+
+function renderChips() {
+  const el = document.getElementById('keyword-chips');
+  if (!el) return;
+  el.innerHTML = seeds.map((s, i) => `
+    <span class="keyword-chip">
+      ${s}
+      <button onclick="removeKeyword(${i})" title="Remove">✕</button>
+    </span>
+  `).join('');
+  updateEstimate();
+}
+
+function removeKeyword(idx) {
+  seeds.splice(idx, 1);
+  renderChips();
+}
+
+function showAddKeyword() {
+  document.getElementById('add-kw-row').classList.remove('hidden');
+  document.getElementById('new-kw').focus();
+}
+
+function addKeyword() {
+  const val = document.getElementById('new-kw').value.trim();
+  if (val && !seeds.includes(val)) {
+    seeds.push(val);
+    renderChips();
+  }
+  document.getElementById('new-kw').value = '';
+  document.getElementById('add-kw-row').classList.add('hidden');
+}
+
+function resetSeeds() {
+  fetch('/api/settings/save', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({})})  // no-op; just reload defaults from server
+  .then(() => location.reload());
+}
+
+// ── Quota estimate ─────────────────────────────────────────────────────────────
+async function updateEstimate() {
+  const n = seeds.length;
+  if (n === 0) return;
+  const r = await fetch(`/api/hunter/quota-estimate?seed_count=${n}`);
+  const d = await r.json();
+  const el = document.getElementById('quota-msg');
+  if (el) {
+    el.textContent = `Estimated cost: ${d.message}`;
+    el.className = d.safe ? 'text-green-400' : 'text-red-400';
+  }
+}
+
+// ── Hunt controls ──────────────────────────────────────────────────────────────
+let currentJobId = null;
+const huntStages = [
+  { id: 'hs-search',   label: 'Stage 1', pct: [0, 30] },
+  { id: 'hs-age',      label: 'Stage 2', pct: [30, 47] },
+  { id: 'hs-breakout', label: 'Stage 3', pct: [47, 72] },
+  { id: 'hs-faceless', label: 'Stage 4', pct: [72, 90] },
+  { id: 'hs-save',     label: 'Stage 5', pct: [90, 100] },
+];
+
+async function startHunt() {
+  const maxAge = document.getElementById('max-age').value;
+  const minViews = document.getElementById('min-views').value;
+  const region = document.getElementById('region').value.toUpperCase();
+  const includeShorts = document.getElementById('include-shorts').checked;
+
+  if (seeds.length === 0) return showToast('Add at least one seed keyword.', 'error');
+
+  document.getElementById('start-btn').disabled = true;
+  document.getElementById('config-panel').classList.add('hidden');
+  document.getElementById('progress-panel').classList.remove('hidden');
+
+  const fd = new FormData();
+  fd.append('seed_keywords', seeds.join('\n'));
+  fd.append('max_channel_age_days', maxAge);
+  fd.append('min_breakout_views', minViews);
+  fd.append('region', region);
+  if (includeShorts) fd.append('include_shorts', 'true');
+
+  const d = await apiPost('/api/hunter/start', fd);
+  if (!d.ok) {
+    showToast(d.message || 'Failed to start hunt.', 'error');
+    document.getElementById('start-btn').disabled = false;
+    document.getElementById('config-panel').classList.remove('hidden');
+    document.getElementById('progress-panel').classList.add('hidden');
+    return;
+  }
+  currentJobId = d.job_id;
+  const huntId = d.hunt_id;
+
+  pollJob(currentJobId,
+    data => {
+      const pct = data.progress_pct || 0;
+      document.getElementById('hunt-progress-fill').style.width = pct + '%';
+      document.getElementById('hunt-progress-msg').textContent = data.message || 'Working...';
+      huntStages.forEach(s => {
+        const el = document.getElementById(s.id);
+        if (!el) return;
+        if (pct >= s.pct[1]) el.className = 'stage-item done';
+        else if (pct >= s.pct[0]) el.className = 'stage-item active';
+      });
+    },
+    data => {
+      window.location.href = `/hunter?hunt_id=${huntId}`;
+    },
+    data => {
+      document.getElementById('start-btn').disabled = false;
+      document.getElementById('config-panel').classList.remove('hidden');
+      document.getElementById('progress-panel').classList.add('hidden');
+      showToast(data.error || data.message || 'Hunt failed.', 'error');
+    }
+  );
+}
+
+async function cancelHunt() {
+  if (!currentJobId) return;
+  await apiPost(`/api/jobs/${currentJobId}/cancel`, new FormData());
+  showToast('Hunt cancellation requested.', 'success');
+}
+
+function switchHunt(id) {
+  if (id) window.location.href = `/hunter?hunt_id=${id}`;
+}
+
+// ── Results filtering ─────────────────────────────────────────────────────────
+function reloadResults() {
+  const huntId = {{ active_hunt.id if active_hunt else 'null' }};
+  if (!huntId) return;
+  const sort = document.getElementById('sort-by')?.value || 'ratio';
+  const faceless = document.getElementById('faceless-filter')?.value || '';
+  const minRatio = document.getElementById('min-ratio')?.value || '0';
+  const niche = document.getElementById('niche-search')?.value || '';
+  const status = document.getElementById('status-filter')?.value || '';
+  const params = new URLSearchParams({ sort_by: sort, min_ratio: minRatio, niche_filter: niche, status_filter: status });
+  if (faceless === 'likely') params.set('faceless_only', 'true');
+
+  fetch(`/api/hunter/results/${huntId}?${params}`)
+    .then(r => r.json())
+    .then(renderResults);
+}
+
+function renderResults(channels) {
+  const container = document.getElementById('results-list');
+  if (!container) return;
+  if (!channels.length) {
+    container.innerHTML = '<div class="card p-8 text-center text-[#8888aa]">No channels match these filters.</div>';
+    return;
+  }
+  // Re-render is complex; just reload the page with filter params for simplicity
+  const sort = document.getElementById('sort-by')?.value || 'ratio';
+  window.location.href = `/hunter?hunt_id={{ active_hunt.id if active_hunt else '' }}&sort=${sort}`;
+}
+
+// ── Channel actions ───────────────────────────────────────────────────────────
+async function updateStatus(dcId, status) {
+  const fd = new FormData(); fd.append('status', status);
+  const d = await apiPost(`/api/hunter/channels/${dcId}/status`, fd);
+  if (d.ok) {
+    showToast(status === 'saved' ? 'Channel saved.' : 'Channel dismissed.', 'success');
+    setTimeout(() => location.reload(), 800);
+  } else showToast('Failed.', 'error');
+}
+
+let sendDcId = null;
+function openSendModal(dcId, name, nicheGuess) {
+  sendDcId = dcId;
+  document.getElementById('send-channel-name').textContent = name;
+  document.getElementById('send-status').classList.add('hidden');
+  // Pre-select niche by niche_guess if possible
+  const sel = document.getElementById('send-niche');
+  if (sel && nicheGuess) {
+    for (const opt of sel.options) {
+      if (opt.text.toLowerCase().includes(nicheGuess.toLowerCase().split(' ')[0])) {
+        sel.value = opt.value;
+        break;
+      }
+    }
+  }
+  document.getElementById('send-modal').classList.remove('hidden');
+}
+
+function closeSendModal() {
+  document.getElementById('send-modal').classList.add('hidden');
+  sendDcId = null;
+}
+
+async function submitSend() {
+  if (!sendDcId) return;
+  const nicheId = document.getElementById('send-niche').value;
+  if (!nicheId) return showToast('Please select a niche.', 'error');
+  const statusEl = document.getElementById('send-status');
+  statusEl.className = 'text-sm mb-3 text-yellow-400';
+  statusEl.textContent = 'Starting ingestion job...';
+  statusEl.classList.remove('hidden');
+  const fd = new FormData(); fd.append('niche_id', nicheId);
+  const d = await apiPost(`/api/hunter/channels/${sendDcId}/send-to-engine`, fd);
+  if (d.ok) {
+    closeSendModal();
+    showToast('Channel sent to the Idea Engine! Ingestion running in the background.', 'success', 5000);
+    setTimeout(() => location.reload(), 1200);
+  } else {
+    statusEl.className = 'text-sm mb-3 text-red-400';
+    statusEl.textContent = d.message || 'Failed to send channel.';
+  }
+}
+
+// Init on load
+renderChips();
+updateEstimate();
+</script>
+{% endblock %}

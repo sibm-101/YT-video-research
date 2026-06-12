@@ -213,6 +213,85 @@ def get_video_by_id(video_id: str) -> dict | None:
     return None
 
 
+def search_recent_videos(query: str, published_after: str, region: str = "US",
+                         max_results: int = 50) -> list[str]:
+    """Search for recent videos by keyword; return list of channel IDs (not cached long — hunt data)."""
+    cfg = load_config()
+    key = _cache_key("hunt_search", {"q": query, "after": published_after, "region": region})
+    cached = _get_cached(key, 1)  # 1-day cache for hunt searches
+    if cached is not None:
+        return cached
+
+    yt = _build_yt()
+    try:
+        resp = yt.search().list(
+            part="snippet",
+            q=query,
+            type="video",
+            publishedAfter=published_after,
+            order="viewCount",
+            maxResults=max_results,
+            regionCode=region,
+        ).execute()
+        channel_ids = list({
+            item["snippet"]["channelId"]
+            for item in resp.get("items", [])
+            if item.get("snippet", {}).get("channelId")
+        })
+        _set_cache(key, channel_ids)
+        return channel_ids
+    except HttpError as e:
+        logger.warning("hunt search failed for '%s': %s", query, e)
+        return []
+
+
+def batch_get_channel_details(channel_ids: list[str]) -> list[dict]:
+    """Batch fetch snippet+statistics for up to 50 channel IDs; 1 quota unit per 50."""
+    if not channel_ids:
+        return []
+    cfg = load_config()
+    yt = _build_yt()
+    results = []
+    for i in range(0, len(channel_ids), 50):
+        batch = channel_ids[i:i+50]
+        try:
+            resp = yt.channels().list(
+                part="snippet,statistics", id=",".join(batch)
+            ).execute()
+            for item in resp.get("items", []):
+                snip = item.get("snippet", {})
+                stats = item.get("statistics", {})
+                results.append({
+                    "yt_channel_id": item["id"],
+                    "name": snip.get("title", ""),
+                    "handle": snip.get("customUrl", ""),
+                    "description": snip.get("description", ""),
+                    "created_at_yt": snip.get("publishedAt", ""),
+                    "subs": int(stats.get("subscriberCount", 0) or 0),
+                    "total_views": int(stats.get("viewCount", 0) or 0),
+                    "video_count": int(stats.get("videoCount", 0) or 0),
+                    "url": f"https://youtube.com/channel/{item['id']}",
+                })
+        except HttpError as e:
+            logger.warning("batch channel details failed: %s", e)
+    return results
+
+
+def get_channel_top_videos(channel_id: str, max_videos: int = 50) -> list[dict]:
+    """Pull a young channel's videos (small playlist) and return sorted by views."""
+    cfg = load_config()
+    cache_days = cfg.get("cache_days", 7)
+    key = _cache_key("hunt_ch_videos", {"channel_id": channel_id})
+    cached = _get_cached(key, cache_days)
+    if cached is not None:
+        return cached
+
+    videos = get_channel_videos(channel_id, max_results=max_videos)
+    sorted_vids = sorted(videos, key=lambda v: v.get("views", 0), reverse=True)
+    _set_cache(key, sorted_vids)
+    return sorted_vids
+
+
 def test_youtube_key() -> tuple[bool, str]:
     try:
         yt = _build_yt()

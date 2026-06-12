@@ -33,6 +33,27 @@ DEFAULTS = {
             "history": ["AskHistorians", "todayilearned"]
         },
     },
+    "hunter": {
+        "max_channel_age_days": 30,
+        "min_breakout_views": 500000,
+        "region": "US",
+        "include_shorts": False,
+        "max_seeds_per_hunt": 35,
+        "seed_keywords": [
+            "dark history", "scary stories", "true crime", "sleep sounds",
+            "motivation speech", "AI explained", "space documentary",
+            "geography facts", "war documentary", "reddit stories",
+            "amazing facts", "psychology tricks", "make money online",
+            "luxury lifestyle", "animal facts", "health tips",
+            "gaming lore", "mysteries unsolved", "famous biographies",
+            "how things work", "lost civilizations", "ocean mysteries",
+            "cold case solved", "conspiracy theories", "survival stories",
+            "ancient history", "criminal minds", "paranormal stories",
+            "science explained", "world records", "financial freedom",
+            "mind blowing facts", "serial killers", "space exploration",
+            "natural disasters",
+        ],
+    },
 }
 
 

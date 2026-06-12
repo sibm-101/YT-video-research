@@ -1,0 +1,15 @@
+Given a YouTube channel's name, description, and full list of video titles, judge whether this is likely a FACELESS channel — meaning no real creator appears on camera as the recurring host.
+
+Faceless signals: narration over stock or AI footage, compilation or listicle formats, no personal-name branding, titles that read like documentary or news content rather than personal vlogs, no "my journey" / "my story" language.
+
+Important clarification: a face appearing IN a thumbnail (historical figure, stock photo, AI-generated face) does NOT make a channel non-faceless. The question is whether a real human host is the on-camera presenter.
+
+Also guess the channel's niche in 2 to 4 words (e.g., "dark history documentary", "true crime narration", "finance motivation").
+
+If given multiple channels, return a JSON array with one object per channel in the same order they were provided.
+If given a single channel, return a single JSON object.
+
+Respond with valid JSON only. No markdown fences, no preamble.
+
+Single channel: {"faceless": "likely"|"unlikely"|"unclear", "confidence": 0.0-1.0, "reason": "one line", "niche_guess": "2-4 words"}
+Multiple channels: [{"faceless": "likely"|"unlikely"|"unclear", "confidence": 0.0-1.0, "reason": "one line", "niche_guess": "2-4 words"}, ...]

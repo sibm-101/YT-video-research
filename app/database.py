@@ -82,6 +82,32 @@ CREATE TABLE IF NOT EXISTS jobs (
 CREATE TABLE IF NOT EXISTS api_cache (
   key TEXT PRIMARY KEY, response_json TEXT, fetched_at TEXT
 );
+CREATE TABLE IF NOT EXISTS hunts (
+  id INTEGER PRIMARY KEY, started_at TEXT, finished_at TEXT,
+  seed_keywords TEXT, region TEXT, max_channel_age_days INTEGER,
+  min_breakout_views INTEGER, quota_used INTEGER DEFAULT 0,
+  results_found INTEGER DEFAULT 0, status TEXT DEFAULT 'running'
+);
+CREATE TABLE IF NOT EXISTS discovered_channels (
+  id INTEGER PRIMARY KEY, hunt_id INTEGER, yt_channel_id TEXT UNIQUE,
+  name TEXT, handle TEXT, url TEXT, created_at_yt TEXT, age_days INTEGER,
+  subs INTEGER, total_views INTEGER, video_count INTEGER,
+  breakout_video_id TEXT, breakout_views INTEGER,
+  views_to_subs_ratio REAL,
+  faceless_judgment TEXT,
+  faceless_confidence REAL, faceless_reason TEXT,
+  niche_guess TEXT,
+  status TEXT DEFAULT 'new',
+  first_seen TEXT
+);
+CREATE TABLE IF NOT EXISTS discovered_videos (
+  id INTEGER PRIMARY KEY, discovered_channel_id INTEGER, yt_video_id TEXT,
+  title TEXT, views INTEGER, published_at TEXT, duration_sec INTEGER,
+  rank INTEGER
+);
+CREATE TABLE IF NOT EXISTS channel_age_cache (
+  yt_channel_id TEXT PRIMARY KEY, created_at_yt TEXT, checked_at TEXT
+);
 """)
     conn.commit()
     conn.close()

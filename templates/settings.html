@@ -155,6 +155,38 @@
     <div class="text-xs text-[#5a5a72]">When enabled, the engine fetches top Reddit posts from each niche's configured subreddits and uses them as topic seeds for idea generation. Configure subreddits per niche in the niche settings (coming soon).</div>
   </div>
 
+  <!-- Channel Hunter -->
+  <div class="card p-6">
+    <div class="font-semibold text-[#e2e2f0] mb-4">Channel Hunter</div>
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="label">Max channel age (days)</label>
+        <input id="hunter_max_age" type="number" class="input" value="{{ cfg.hunter.max_channel_age_days }}"/>
+        <div class="text-xs text-[#5a5a72] mt-1">Only channels created within this many days are kept. Default: 30</div>
+      </div>
+      <div>
+        <label class="label">Minimum breakout views</label>
+        <input id="hunter_min_views" type="number" class="input" value="{{ cfg.hunter.min_breakout_views }}"/>
+        <div class="text-xs text-[#5a5a72] mt-1">A channel's best video must have at least this many views to qualify. Default: 500,000</div>
+      </div>
+      <div>
+        <label class="label">Default search region</label>
+        <input id="hunter_region" type="text" class="input" value="{{ cfg.hunter.region }}" maxlength="2" style="text-transform:uppercase"/>
+        <div class="text-xs text-[#5a5a72] mt-1">Two-letter country code (US, GB, CA, AU…). Default: US</div>
+      </div>
+      <div>
+        <label class="label">Max seeds per hunt</label>
+        <input id="hunter_max_seeds" type="number" class="input" value="{{ cfg.hunter.max_seeds_per_hunt }}"/>
+        <div class="text-xs text-[#5a5a72] mt-1">Maximum keywords used in one hunt. Each costs 100 quota units. Default: 35</div>
+      </div>
+    </div>
+    <div class="mt-4">
+      <label class="label">Seed keyword basket (one per line)</label>
+      <textarea id="hunter_seeds" class="textarea" rows="8">{{ cfg.hunter.seed_keywords | join('\n') }}</textarea>
+      <div class="text-xs text-[#5a5a72] mt-1">The keyword net cast during each hunt. Edit freely — changes take effect on the next hunt.</div>
+    </div>
+  </div>
+
   <!-- Actions -->
   <div class="flex gap-3">
     <button onclick="saveSettings()" class="btn-primary">Save Settings</button>
@@ -209,6 +241,11 @@ async function saveSettings() {
     parse_classify: document.getElementById('parse_classify').value,
     generate_reason: document.getElementById('generate_reason').value,
     reddit_enabled: document.getElementById('reddit_enabled').checked,
+    hunter_max_age: document.getElementById('hunter_max_age').value,
+    hunter_min_views: document.getElementById('hunter_min_views').value,
+    hunter_region: document.getElementById('hunter_region').value.trim().toUpperCase(),
+    hunter_max_seeds: document.getElementById('hunter_max_seeds').value,
+    hunter_seeds: document.getElementById('hunter_seeds').value,
   };
   const r = await fetch('/api/settings/save', {
     method: 'POST',
