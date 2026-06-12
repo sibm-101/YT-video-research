@@ -375,6 +375,108 @@ def _generate_report(run_id: int, niche_id: int, niche_name: str, db, cfg: dict)
     return str(report_path)
 
 
+def run_validate_custom_job(job_id: int, niche_id: int, titles: list[str]):
+    """Background task for validating a user-supplied list of idea titles."""
+    def upd(msg, pct=None):
+        update_job(job_id, message=msg, progress=pct)
+
+    try:
+        update_job(job_id, status="running", stage="Validating", progress=0)
+        cfg = load_config()
+        db = get_db()
+
+        niche = db.execute("SELECT * FROM niches WHERE id=?", (niche_id,)).fetchone()
+        niche_name = niche["name"] if niche else "Unknown"
+
+        # Load existing niche rubric if available
+        rubric = []
+        if niche and niche["rubric_json"]:
+            try:
+                rubric = json.loads(niche["rubric_json"])
+            except Exception:
+                pass
+
+        ideas = [{"title": t, "one_line": "", "frame_used": "", "angle_note": ""}
+                 for t in titles if t]
+        total = len(ideas)
+
+        upd(f"Loaded {total} idea{'s' if total != 1 else ''} to validate...", 5)
+
+        # Structural scoring against the niche rubric
+        if rubric and ideas:
+            upd("Scoring ideas structurally...", 10)
+            try:
+                scores = claude_client.score_structural(ideas, rubric, niche_name)
+                score_map = {s["title"]: s for s in scores if isinstance(s, dict) and "title" in s}
+                for idea in ideas:
+                    s = score_map.get(idea["title"], {})
+                    idea["structural_score"] = float(s.get("score", 5))
+                    idea["structural_weakness"] = s.get("weakness", "")
+            except Exception as e:
+                logger.warning("Structural scoring failed: %s", e)
+                for idea in ideas:
+                    idea["structural_score"] = 5.0
+        else:
+            for idea in ideas:
+                idea["structural_score"] = 5.0
+
+        # Create a run record
+        run_row = db.execute(
+            "INSERT INTO runs (niche_id, started_at) VALUES (?,?)",
+            (niche_id, datetime.utcnow().isoformat())
+        )
+        run_id = run_row.lastrowid
+
+        quota_tracker = {"used": 0, "max": cfg.get("max_searches_per_run", 60) * 100}
+
+        niche_videos = [dict(r) for r in db.execute(
+            "SELECT title, views, outlier_score FROM videos WHERE niche_id=?", (niche_id,)
+        ).fetchall()]
+
+        all_idea_titles = [i["title"] for i in ideas]
+        survived = 0
+
+        for i, idea in enumerate(ideas):
+            pct = 20 + int((i / total) * 75)
+            upd(f"Validating {i + 1}/{total}: '{idea['title'][:55]}'", pct)
+
+            result = gauntlet.run_gauntlet(
+                idea, niche_id, quota_tracker,
+                all_idea_titles, niche_videos, rubric, niche_name, upd
+            )
+
+            if result.get("verdict") not in ("KILL",):
+                survived += 1
+
+            db.execute("""
+                INSERT INTO ideas
+                (niche_id, run_id, title, one_line, frame_used, angle_note,
+                 structural_score, demand_score, staleness_mult, freshness_gate,
+                 final_score, verdict, evidence_json, status, created_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """, (niche_id, run_id, result["title"], result.get("one_line", ""),
+                  result.get("frame_used", ""), result.get("angle_note", ""),
+                  result.get("structural_score", 5), result.get("demand_score", 5),
+                  result.get("staleness_mult", 1.0), result.get("freshness_gate", 1),
+                  result.get("final_score", 0), result.get("verdict", "PARK"),
+                  result.get("evidence_json", "[]"), "new",
+                  datetime.utcnow().isoformat()))
+
+        db.execute("""
+            UPDATE runs SET ideas_generated=?, ideas_survived=?, finished_at=? WHERE id=?
+        """, (total, survived, datetime.utcnow().isoformat(), run_id))
+
+        db.close()
+        update_job(job_id, status="done", stage="Complete", progress=100,
+                   message=f"Done! {survived} of {total} ideas passed validation.",
+                   result_json=json.dumps({"run_id": run_id, "survived": survived, "total": total}))
+
+    except Exception as e:
+        logger.exception("Validate custom job %d failed", job_id)
+        update_job(job_id, status="failed", error=str(e),
+                   message=f"Validation failed: {str(e)[:200]}")
+
+
 def start_job(job_type: str, niche_id: int, **kwargs) -> int:
     db = get_db()
     cur = db.execute(
@@ -397,6 +499,12 @@ def start_job(job_type: str, niche_id: int, **kwargs) -> int:
             target=run_ideas_job,
             args=(job_id, niche_id, kwargs.get("n_ideas", 30),
                   kwargs.get("validate_top", 25)),
+            daemon=True
+        )
+    elif job_type == "validate_custom":
+        t = threading.Thread(
+            target=run_validate_custom_job,
+            args=(job_id, niche_id, kwargs.get("titles", [])),
             daemon=True
         )
     elif job_type == "hunt":

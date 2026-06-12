@@ -34,6 +34,20 @@ async def start_ideas_run(
     return JSONResponse({"ok": True, "job_id": job_id})
 
 
+@router.post("/api/ideas/validate-custom")
+async def start_custom_validation(request: Request):
+    data = await request.json()
+    niche_id = data.get("niche_id")
+    titles_raw = data.get("titles", "")
+    titles = [t.strip() for t in titles_raw.splitlines() if t.strip()]
+    if not niche_id:
+        return JSONResponse({"ok": False, "message": "Please select a niche."}, status_code=400)
+    if not titles:
+        return JSONResponse({"ok": False, "message": "Please enter at least one title."}, status_code=400)
+    job_id = start_job("validate_custom", int(niche_id), titles=titles)
+    return JSONResponse({"ok": True, "job_id": job_id, "count": len(titles)})
+
+
 @router.get("/ideas", response_class=HTMLResponse)
 async def ideas_list(
     request: Request,

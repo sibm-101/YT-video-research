@@ -1,13 +1,25 @@
 {% extends "base.html" %}
-{% block title %}Find New Ideas — Viral Idea Engine{% endblock %}
+{% block title %}Ideas — Viral Idea Engine{% endblock %}
 {% block content %}
 
-<div class="mb-8">
-  <h1 class="text-2xl font-bold text-[#e2e2f0]">Find New Ideas</h1>
-  <p class="text-[#8888aa] text-sm mt-1">Generate and stress-test new video ideas from your research</p>
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-[#e2e2f0]">Ideas</h1>
+  <p class="text-[#8888aa] text-sm mt-1">Generate new ideas from your research, or validate a list you already have</p>
 </div>
 
-<!-- Niche selector -->
+<!-- Mode tabs -->
+<div class="flex gap-1 mb-5 bg-[#1e1e2e] rounded-lg p-1 w-fit">
+  <button id="tab-generate" onclick="switchTab('generate')"
+    class="tab-btn px-5 py-2 rounded-md text-sm font-medium transition-all bg-[#2a2a4a] text-[#818cf8]">
+    Generate Ideas
+  </button>
+  <button id="tab-validate" onclick="switchTab('validate')"
+    class="tab-btn px-5 py-2 rounded-md text-sm font-medium transition-all text-[#8888aa] hover:text-[#e2e2f0]">
+    Validate My List
+  </button>
+</div>
+
+<!-- Niche selector (shared) -->
 <div class="card p-5 mb-5">
   <label class="label">Niche</label>
   <select id="niche-select" class="input" style="max-width:280px">
@@ -21,7 +33,9 @@
 </div>
 
 {% if niches %}
-<!-- Run configuration -->
+
+<!-- ── GENERATE TAB ── -->
+<div id="panel-generate">
 <div id="config-panel" class="card p-6 mb-5">
   <div class="grid grid-cols-2 gap-6">
 
@@ -69,41 +83,69 @@
 
   <div class="mt-6">
     <button id="start-btn" onclick="startRun()" class="btn-primary px-10">
-      Start →
+      Generate &amp; Validate →
     </button>
   </div>
 </div>
+</div><!-- /panel-generate -->
 
-<!-- Progress view -->
+<!-- ── VALIDATE TAB ── -->
+<div id="panel-validate" class="hidden">
+<div id="validate-config-panel" class="card p-6 mb-5">
+  <div class="mb-5">
+    <label class="label mb-2">Your idea titles</label>
+    <p class="text-xs text-[#5a5a72] mb-3">One title per line. Each will be stress-tested against live YouTube data using the same gauntlet as the generator.</p>
+    <textarea id="titles-input"
+      class="input w-full font-mono text-sm"
+      rows="10"
+      placeholder="How I Built a $10k/Month Business With No Experience&#10;The Dark Side of Passive Income Nobody Talks About&#10;I Tried Every Productivity Method For 30 Days&#10;..."
+      oninput="updateTitleCount()"></textarea>
+    <div class="flex items-center justify-between mt-2">
+      <span id="title-count" class="text-xs text-[#5a5a72]">0 titles</span>
+      <button onclick="document.getElementById('titles-input').value=''; updateTitleCount()"
+        class="text-xs text-[#5a5a72] hover:text-[#8888aa] transition-colors">Clear</button>
+    </div>
+  </div>
+
+  <div class="bg-[#13131f] rounded-lg p-4 text-xs text-[#5a5a72] mb-5 border border-[#2a2a3e]">
+    <div class="font-medium text-[#8888aa] mb-1">What happens</div>
+    <div class="space-y-1">
+      <div>• Each title is scored against your niche rubric (if one exists)</div>
+      <div>• Live YouTube searches check demand, saturation, and staleness</div>
+      <div>• Claude gives a verdict: MAKE / MAKE WITH REFRAME / PARK / KILL</div>
+      <div>• Results appear in your Ideas list alongside generated ideas</div>
+    </div>
+  </div>
+
+  <button id="validate-btn" onclick="startValidation()" class="btn-primary px-10">
+    Validate →
+  </button>
+</div>
+</div><!-- /panel-validate -->
+
+<!-- Progress view (shared) -->
 <div id="run-panel" class="card p-6 hidden">
   <div class="flex items-center justify-between mb-5">
-    <div class="font-medium text-[#e2e2f0]">Generating Ideas</div>
+    <div class="font-medium text-[#e2e2f0]" id="run-panel-title">Working...</div>
     <button onclick="cancelRun()" id="cancel-btn" class="btn-danger text-xs px-3 py-1.5">Cancel</button>
   </div>
 
-  <!-- Stage checklist -->
-  <div class="mb-5 space-y-1" id="stage-list">
-    <div class="stage-item" id="stage-data">
-      <div class="stage-dot"></div><span>Gathering niche data</span>
-    </div>
-    <div class="stage-item" id="stage-patterns">
-      <div class="stage-dot"></div><span>Mining outlier patterns</span>
-    </div>
-    <div class="stage-item" id="stage-rubric">
-      <div class="stage-dot"></div><span>Deriving niche rubric</span>
-    </div>
-    <div class="stage-item" id="stage-generate">
-      <div class="stage-dot"></div><span>Generating video ideas</span>
-    </div>
-    <div class="stage-item" id="stage-score">
-      <div class="stage-dot"></div><span>Scoring ideas structurally</span>
-    </div>
-    <div class="stage-item" id="stage-validate">
-      <div class="stage-dot"></div><span>Stress-testing against live YouTube</span>
-    </div>
-    <div class="stage-item" id="stage-report">
-      <div class="stage-dot"></div><span>Generating report</span>
-    </div>
+  <!-- Stage checklist for generate mode -->
+  <div class="mb-5 space-y-1" id="stage-list-generate">
+    <div class="stage-item" id="stage-data"><div class="stage-dot"></div><span>Gathering niche data</span></div>
+    <div class="stage-item" id="stage-patterns"><div class="stage-dot"></div><span>Mining outlier patterns</span></div>
+    <div class="stage-item" id="stage-rubric"><div class="stage-dot"></div><span>Deriving niche rubric</span></div>
+    <div class="stage-item" id="stage-generate"><div class="stage-dot"></div><span>Generating video ideas</span></div>
+    <div class="stage-item" id="stage-score"><div class="stage-dot"></div><span>Scoring ideas structurally</span></div>
+    <div class="stage-item" id="stage-validate"><div class="stage-dot"></div><span>Stress-testing against live YouTube</span></div>
+    <div class="stage-item" id="stage-report"><div class="stage-dot"></div><span>Generating report</span></div>
+  </div>
+
+  <!-- Stage checklist for validate mode -->
+  <div class="mb-5 space-y-1 hidden" id="stage-list-validate">
+    <div class="stage-item" id="vstage-score"><div class="stage-dot"></div><span>Scoring against niche rubric</span></div>
+    <div class="stage-item" id="vstage-validate"><div class="stage-dot"></div><span>Stress-testing against live YouTube</span></div>
+    <div class="stage-item" id="vstage-done"><div class="stage-dot"></div><span>Saving results</span></div>
   </div>
 
   <div class="progress-bar mb-3">
@@ -112,14 +154,14 @@
   <div id="run-progress-msg" class="text-sm text-[#8888aa]">Starting...</div>
 </div>
 
-<!-- Done state -->
+<!-- Done state (shared) -->
 <div id="done-panel" class="card p-8 text-center hidden">
   <div class="text-4xl mb-3">✅</div>
-  <div class="text-lg font-semibold text-[#e2e2f0] mb-2" id="done-title">Run complete!</div>
+  <div class="text-lg font-semibold text-[#e2e2f0] mb-2" id="done-title">Done!</div>
   <div class="text-[#8888aa] text-sm mb-6" id="done-msg"></div>
   <div class="flex gap-3 justify-center">
     <a id="view-ideas-link" href="/ideas" class="btn-primary">View Ideas →</a>
-    <button onclick="resetRun()" class="btn-secondary">Run Again</button>
+    <button onclick="resetUI()" class="btn-secondary">Go Again</button>
   </div>
 </div>
 {% endif %}
@@ -128,7 +170,9 @@
 {% block scripts %}
 <script>
 let currentJobId = null;
-const stages = [
+let currentMode = 'generate'; // 'generate' | 'validate'
+
+const stagesGenerate = [
   { id: 'stage-data',     pct: [0,15] },
   { id: 'stage-patterns', pct: [15,30] },
   { id: 'stage-rubric',   pct: [30,40] },
@@ -137,6 +181,31 @@ const stages = [
   { id: 'stage-validate', pct: [55,90] },
   { id: 'stage-report',   pct: [90,100] },
 ];
+const stagesValidate = [
+  { id: 'vstage-score',    pct: [0,15] },
+  { id: 'vstage-validate', pct: [15,95] },
+  { id: 'vstage-done',     pct: [95,100] },
+];
+
+function switchTab(tab) {
+  currentMode = tab;
+  const isGenerate = tab === 'generate';
+  document.getElementById('panel-generate').classList.toggle('hidden', !isGenerate);
+  document.getElementById('panel-validate').classList.toggle('hidden', isGenerate);
+  document.getElementById('tab-generate').classList.toggle('bg-[#2a2a4a]', isGenerate);
+  document.getElementById('tab-generate').classList.toggle('text-[#818cf8]', isGenerate);
+  document.getElementById('tab-generate').classList.toggle('text-[#8888aa]', !isGenerate);
+  document.getElementById('tab-validate').classList.toggle('bg-[#2a2a4a]', !isGenerate);
+  document.getElementById('tab-validate').classList.toggle('text-[#818cf8]', !isGenerate);
+  document.getElementById('tab-validate').classList.toggle('text-[#8888aa]', isGenerate);
+}
+
+function updateTitleCount() {
+  const lines = document.getElementById('titles-input').value
+    .split('\n').filter(l => l.trim());
+  const el = document.getElementById('title-count');
+  el.textContent = lines.length === 1 ? '1 title' : `${lines.length} titles`;
+}
 
 // Depth radio visual update
 document.querySelectorAll('input[name="depth"]').forEach(r => {
@@ -164,8 +233,7 @@ async function startRun() {
   const depth = document.querySelector('input[name="depth"]:checked').value;
 
   document.getElementById('start-btn').disabled = true;
-  document.getElementById('config-panel').classList.add('hidden');
-  document.getElementById('run-panel').classList.remove('hidden');
+  showRunPanel('generate');
 
   const fd = new FormData();
   fd.append('niche_id', nicheId);
@@ -176,33 +244,56 @@ async function startRun() {
   if (!d.ok) {
     showToast(d.message || 'Failed to start.', 'error');
     document.getElementById('start-btn').disabled = false;
-    document.getElementById('config-panel').classList.remove('hidden');
-    document.getElementById('run-panel').classList.add('hidden');
+    hideRunPanel();
     return;
   }
   currentJobId = d.job_id;
+  pollJob(currentJobId, updateProgress, onDone, onFailed);
+}
 
-  pollJob(currentJobId,
-    updateProgress,
-    data => {
-      setAllStagesDone();
-      document.getElementById('run-panel').classList.add('hidden');
-      document.getElementById('done-panel').classList.remove('hidden');
-      try {
-        const result = JSON.parse(data.result_json || '{}');
-        document.getElementById('done-msg').textContent = data.message || `${result.survived || 0} ideas ready to review.`;
-        if (result.run_id) document.getElementById('view-ideas-link').href = `/ideas?run_id=${result.run_id}`;
-      } catch(e) {
-        document.getElementById('done-msg').textContent = data.message || 'Run complete!';
-      }
-    },
-    data => {
-      document.getElementById('run-panel').classList.add('hidden');
-      document.getElementById('config-panel').classList.remove('hidden');
-      document.getElementById('start-btn').disabled = false;
-      showToast(data.error || data.message || 'Run failed. Check Settings for API quota.', 'error');
-    }
-  );
+async function startValidation() {
+  const nicheId = document.getElementById('niche-select').value;
+  if (!nicheId) return showToast('Please select a niche first.', 'error');
+  const titlesRaw = document.getElementById('titles-input').value;
+  const titles = titlesRaw.split('\n').filter(l => l.trim());
+  if (!titles.length) return showToast('Please enter at least one title.', 'error');
+
+  document.getElementById('validate-btn').disabled = true;
+  showRunPanel('validate');
+
+  const d = await fetch('/api/ideas/validate-custom', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({niche_id: parseInt(nicheId), titles: titlesRaw}),
+  }).then(r => r.json());
+
+  if (!d.ok) {
+    showToast(d.message || 'Failed to start.', 'error');
+    document.getElementById('validate-btn').disabled = false;
+    hideRunPanel();
+    return;
+  }
+  currentJobId = d.job_id;
+  pollJob(currentJobId, updateProgress, onDone, onFailed);
+}
+
+function showRunPanel(mode) {
+  document.getElementById('panel-generate').classList.add('hidden');
+  document.getElementById('panel-validate').classList.add('hidden');
+  document.getElementById('run-panel').classList.remove('hidden');
+  document.getElementById('stage-list-generate').classList.toggle('hidden', mode !== 'generate');
+  document.getElementById('stage-list-validate').classList.toggle('hidden', mode !== 'validate');
+  document.getElementById('run-panel-title').textContent =
+    mode === 'generate' ? 'Generating Ideas' : 'Validating Ideas';
+}
+
+function hideRunPanel() {
+  document.getElementById('run-panel').classList.add('hidden');
+  if (currentMode === 'generate') {
+    document.getElementById('panel-generate').classList.remove('hidden');
+  } else {
+    document.getElementById('panel-validate').classList.remove('hidden');
+  }
 }
 
 function updateProgress(data) {
@@ -210,23 +301,40 @@ function updateProgress(data) {
   document.getElementById('run-progress-fill').style.width = pct + '%';
   document.getElementById('run-progress-msg').textContent = data.message || 'Working...';
 
-  stages.forEach((s, i) => {
+  const stages = currentMode === 'generate' ? stagesGenerate : stagesValidate;
+  stages.forEach(s => {
     const el = document.getElementById(s.id);
     if (!el) return;
-    if (pct >= s.pct[1]) {
-      el.className = 'stage-item done';
-    } else if (pct >= s.pct[0]) {
-      el.className = 'stage-item active';
-    }
+    if (pct >= s.pct[1]) el.className = 'stage-item done';
+    else if (pct >= s.pct[0]) el.className = 'stage-item active';
   });
 }
 
-function setAllStagesDone() {
+function onDone(data) {
+  const stages = currentMode === 'generate' ? stagesGenerate : stagesValidate;
   stages.forEach(s => {
     const el = document.getElementById(s.id);
     if (el) el.className = 'stage-item done';
   });
   document.getElementById('run-progress-fill').style.width = '100%';
+  document.getElementById('run-panel').classList.add('hidden');
+  document.getElementById('done-panel').classList.remove('hidden');
+  try {
+    const result = JSON.parse(data.result_json || '{}');
+    document.getElementById('done-msg').textContent = data.message ||
+      `${result.survived || 0} ideas ready to review.`;
+    if (result.run_id)
+      document.getElementById('view-ideas-link').href = `/ideas?run_id=${result.run_id}`;
+  } catch(e) {
+    document.getElementById('done-msg').textContent = data.message || 'Done!';
+  }
+}
+
+function onFailed(data) {
+  hideRunPanel();
+  document.getElementById('start-btn').disabled = false;
+  document.getElementById('validate-btn').disabled = false;
+  showToast(data.error || data.message || 'Failed. Check Settings for API quota.', 'error');
 }
 
 async function cancelRun() {
@@ -236,16 +344,17 @@ async function cancelRun() {
   document.getElementById('cancel-btn').disabled = true;
 }
 
-function resetRun() {
+function resetUI() {
   document.getElementById('done-panel').classList.add('hidden');
-  document.getElementById('config-panel').classList.remove('hidden');
   document.getElementById('start-btn').disabled = false;
-  stages.forEach(s => {
+  document.getElementById('validate-btn').disabled = false;
+  [...stagesGenerate, ...stagesValidate].forEach(s => {
     const el = document.getElementById(s.id);
     if (el) el.className = 'stage-item';
   });
   document.getElementById('run-progress-fill').style.width = '0%';
   document.getElementById('run-progress-msg').textContent = 'Starting...';
+  switchTab(currentMode);
 }
 </script>
 {% endblock %}
