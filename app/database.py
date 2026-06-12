@@ -6,9 +6,24 @@ DB_PATH = Path(__file__).parent.parent / "engine.db"
 
 
 def get_db() -> sqlite3.Connection:
-    conn = sqlite3.connect(str(DB_PATH), check_same_thread=False, timeout=30)
+    # isolation_level=None puts the connection in autocommit mode: every write
+    # commits and releases its lock the instant it finishes, rather than holding
+    # an open transaction until the next explicit commit().
+    #
+    # This is essential because the pipeline routinely opens a SECOND connection
+    # (the job-progress writer) from inside code that already has a connection
+    # mid-loop. If that first connection were holding an uncommitted write
+    # transaction, the second write would deadlock against it — the holder can't
+    # commit until the loop proceeds, but the loop can't proceed until the second
+    # write returns. No busy-timeout can break that; it just fails after waiting
+    # with "database is locked". Autocommit keeps every write lock short-lived so
+    # the deadlock can never form. The existing db.commit() calls remain valid
+    # no-ops in this mode.
+    conn = sqlite3.connect(str(DB_PATH), check_same_thread=False, timeout=30,
+                           isolation_level=None)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=30000")
     conn.execute("PRAGMA foreign_keys=ON")
     return conn
 
