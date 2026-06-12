@@ -10,13 +10,25 @@ from app.database import init_db
 from app.config import has_keys
 from app.routes import setup, dashboard, research, ideas, library, reports, settings, jobs, channel_hunter
 
+# The Windows console defaults to a non-UTF-8 code page (cp1252), so any log line
+# containing a Unicode character would otherwise crash the process. Switch stdout/
+# stderr to UTF-8 with errors="replace" so logging can never raise on encoding.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+_log_handlers = [logging.FileHandler(str(Path(__file__).parent.parent / "app.log"), encoding="utf-8")]
+try:
+    _log_handlers.append(logging.StreamHandler())
+except Exception:
+    pass
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-    handlers=[
-        logging.StreamHandler(stream=open(sys.stdout.fileno(), mode='w', encoding='utf-8', closefd=False)),
-        logging.FileHandler(str(Path(__file__).parent.parent / "app.log"), encoding="utf-8"),
-    ],
+    handlers=_log_handlers,
 )
 
 app = FastAPI(title="Viral Idea Engine", docs_url=None, redoc_url=None)

@@ -81,6 +81,34 @@ def _deep_merge(base: dict, override: dict) -> dict:
     return result
 
 
+# Invisible / formatting characters that frequently ride along when an API key
+# is copied from a web page or PDF. These break HTTP header encoding downstream.
+_INVISIBLE_CHARS = ("﻿", "​", "‌", "‍", "⁠", " ", " ")
+
+
+def clean_key(key: str) -> str:
+    """API keys are plain ASCII. Strip whitespace, surrounding quotes, and
+    invisible copy-paste artifacts (BOM, zero-width spaces, non-breaking spaces)."""
+    if not key:
+        return ""
+    for ch in _INVISIBLE_CHARS:
+        key = key.replace(ch, "")
+    return key.strip().strip('"').strip("'").strip()
+
+
+def key_problem(key: str) -> str:
+    """Return a plain-English problem with the key, or '' if it looks usable.
+    Does NOT check validity with the provider — only local sanity."""
+    cleaned = clean_key(key)
+    if not cleaned:
+        return "No key was entered."
+    if not cleaned.isascii():
+        return ("This key contains characters that don't belong in an API key. "
+                "It was probably copied with hidden formatting — please delete it, "
+                "re-copy the key directly from the provider, and paste it again.")
+    return ""
+
+
 def get_env(key: str) -> str:
     return os.environ.get(key, "")
 
@@ -91,6 +119,10 @@ def has_keys() -> bool:
 
 
 def write_env(anthropic_key: str, youtube_key: str, reddit_id: str = "", reddit_secret: str = ""):
+    anthropic_key = clean_key(anthropic_key)
+    youtube_key = clean_key(youtube_key)
+    reddit_id = clean_key(reddit_id)
+    reddit_secret = clean_key(reddit_secret)
     lines = [f"ANTHROPIC_API_KEY={anthropic_key}", f"YOUTUBE_API_KEY={youtube_key}"]
     if reddit_id:
         lines.append(f"REDDIT_CLIENT_ID={reddit_id}")

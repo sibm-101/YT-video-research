@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from anthropic import Anthropic, APIError
 
-from app.config import get_env, load_config
+from app.config import get_env, load_config, clean_key, key_problem
 
 logger = logging.getLogger(__name__)
 PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
@@ -19,9 +19,12 @@ def _load_prompt(name: str) -> str:
 
 
 def _client() -> Anthropic:
-    key = get_env("ANTHROPIC_API_KEY")
+    key = clean_key(get_env("ANTHROPIC_API_KEY"))
     if not key:
         raise ValueError("Anthropic API key not configured.")
+    problem = key_problem(key)
+    if problem:
+        raise ValueError(problem)
     return Anthropic(api_key=key)
 
 
@@ -56,6 +59,10 @@ def _call(model: str, system: str, user: str, max_tokens: int = 4096) -> dict | 
 
 
 def test_anthropic_key() -> tuple[bool, str]:
+    # Local sanity check first — catches copy-paste junk before any network call
+    problem = key_problem(get_env("ANTHROPIC_API_KEY"))
+    if problem:
+        return False, problem
     try:
         client = _client()
         client.messages.create(
@@ -64,10 +71,15 @@ def test_anthropic_key() -> tuple[bool, str]:
             messages=[{"role": "user", "content": "hi"}],
         )
         return True, "Connected successfully."
+    except ValueError as e:
+        return False, str(e)
     except APIError as e:
-        return False, f"API error: {str(e)}"
+        status = getattr(e, "status_code", None)
+        if status in (401, 403):
+            return False, "This Anthropic API key was rejected. Check it is correct and active at console.anthropic.com."
+        return False, f"Anthropic API error: {str(e)[:160]}"
     except Exception as e:
-        return False, f"Connection failed: {str(e)}"
+        return False, f"Could not reach Anthropic. Check your internet connection. ({str(e)[:120]})"
 
 
 def extract_screenshot(image_b64: str, media_type: str = "image/png") -> dict:

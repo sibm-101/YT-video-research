@@ -4,7 +4,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 
-from app.config import load_config, save_config, get_env, write_env
+from app.config import load_config, save_config, get_env, write_env, clean_key
 from app import claude_client
 from app.youtube import test_youtube_key
 from app.database import get_db
@@ -94,6 +94,7 @@ async def reset_settings():
 
 @router.post("/api/settings/test-anthropic")
 async def test_anthropic_settings(key: str = Form(...)):
+    key = clean_key(key)
     os.environ["ANTHROPIC_API_KEY"] = key
     ok, msg = claude_client.test_anthropic_key()
     if ok:
@@ -105,6 +106,7 @@ async def test_anthropic_settings(key: str = Form(...)):
 
 @router.post("/api/settings/test-youtube")
 async def test_youtube_settings(key: str = Form(...)):
+    key = clean_key(key)
     os.environ["YOUTUBE_API_KEY"] = key
     ok, msg = test_youtube_key()
     if ok:

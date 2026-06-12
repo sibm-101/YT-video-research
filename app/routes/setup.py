@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 
-from app.config import has_keys, write_env, get_env
+from app.config import has_keys, write_env, get_env, clean_key
 from app import claude_client
 from app.youtube import test_youtube_key
 
@@ -19,7 +19,7 @@ async def setup_page(request: Request):
 @router.post("/api/setup/test-anthropic")
 async def test_anthropic(key: str = Form(...)):
     import os
-    os.environ["ANTHROPIC_API_KEY"] = key
+    os.environ["ANTHROPIC_API_KEY"] = clean_key(key)
     ok, msg = claude_client.test_anthropic_key()
     return JSONResponse({"ok": ok, "message": msg})
 
@@ -27,7 +27,7 @@ async def test_anthropic(key: str = Form(...)):
 @router.post("/api/setup/test-youtube")
 async def test_youtube(key: str = Form(...)):
     import os
-    os.environ["YOUTUBE_API_KEY"] = key
+    os.environ["YOUTUBE_API_KEY"] = clean_key(key)
     ok, msg = test_youtube_key()
     return JSONResponse({"ok": ok, "message": msg})
 

@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-from app.config import get_env, load_config
+from app.config import get_env, load_config, clean_key, key_problem
 from app.database import get_db
 from app.utils import parse_duration_iso
 
@@ -40,9 +40,12 @@ def _set_cache(key: str, data: dict):
 
 
 def _build_yt():
-    api_key = get_env("YOUTUBE_API_KEY")
+    api_key = clean_key(get_env("YOUTUBE_API_KEY"))
     if not api_key:
         raise ValueError("YouTube API key not configured.")
+    problem = key_problem(api_key)
+    if problem:
+        raise ValueError(problem)
     return build("youtube", "v3", developerKey=api_key, cache_discovery=False)
 
 
@@ -293,14 +296,22 @@ def get_channel_top_videos(channel_id: str, max_videos: int = 50) -> list[dict]:
 
 
 def test_youtube_key() -> tuple[bool, str]:
+    # Local sanity check first — catches copy-paste junk before any network call
+    problem = key_problem(get_env("YOUTUBE_API_KEY"))
+    if problem:
+        return False, problem
     try:
         yt = _build_yt()
         yt.videos().list(part="snippet", id="dQw4w9WgXcQ").execute()
         return True, "Connected successfully."
+    except ValueError as e:
+        return False, str(e)
     except HttpError as e:
         code = e.resp.status
         if code == 403:
-            return False, "API key is invalid or YouTube Data API v3 is not enabled."
-        return False, f"YouTube error {code}: {e.reason}"
+            return False, "This key was rejected, or the YouTube Data API v3 is not enabled for it. In Google Cloud Console, enable 'YouTube Data API v3' for this key's project."
+        if code == 400:
+            return False, "This YouTube API key looks malformed. Re-copy it from the Google Cloud Console."
+        return False, f"YouTube error {code}: {getattr(e, 'reason', '')}"
     except Exception as e:
-        return False, f"Connection failed: {str(e)}"
+        return False, f"Could not reach YouTube. Check your internet connection. ({str(e)[:120]})"
