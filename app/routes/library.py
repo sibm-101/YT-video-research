@@ -14,6 +14,10 @@ async def library_page(request: Request, niche_id: int = None, tab: str = "chann
     db = get_db()
     niches = [dict(r) for r in db.execute("SELECT * FROM niches ORDER BY name").fetchall()]
 
+    # Default to first niche when none is specified
+    if niche_id is None and niches:
+        niche_id = niches[0]["id"]
+
     channels = []
     outliers = []
     frameworks = []
